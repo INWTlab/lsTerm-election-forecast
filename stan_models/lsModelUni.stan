@@ -1,16 +1,15 @@
 data {
   int<lower=0> NTOTAL;
   int<lower=0> YTOTAL;
-  int<lower=0> NBTW;
   int<lower=0> NPollsters;
   int<lower=0> NParties;
-  int AllDates[NTOTAL];
-  vector[NTOTAL] poll[NParties];
+  int matchedDates[NTOTAL];
+  vector[NTOTAL] pollData[NParties];
   matrix[NTOTAL,NPollsters] IMatrix;
   vector[YTOTAL] govMatrix[NParties];
   vector[NTOTAL] Missing[NParties];
-  vector[YTOTAL] BTWIndikator3;
-  vector[YTOTAL] BTWIndikator2;
+  vector[YTOTAL] electionIndikator;
+  vector[YTOTAL] electionIndikator2;
 }
 
 parameters {
@@ -53,11 +52,11 @@ transformed parameters{
 
     for(n in 2:YTOTAL){
       y[i,n]         = y[i,n-1]  + eps[i,n] + adds - substract;
-      pollError[i,n] =  0.98 * pollError[i,n-1] * BTWIndikator2[n] + epsilonPolls[i,n] * sqrt(WT2) * sigma_pollbias;
+      pollError[i,n] =  0.98 * pollError[i,n-1] * electionIndikator[n] + epsilonPolls[i,n] * sqrt(WT2) * sigma_pollbias;
       adds = (adds + eps[i,n]) * theta2;
       substract = substract * theta + (alpha * (adds + eps[i,n])) * (1 - theta);
     }
-    w[i] = y[i] + BTWIndikator3 .* pollError[i];
+    w[i] = y[i] + electionIndikator2 .* pollError[i];
   }
 }
 model {
@@ -82,6 +81,6 @@ model {
     epsilon[i] ~ normal(0, 1);
     epsilonPolls[i] ~ normal(0, 1);
     sigma_sd[i] ~ normal(0.05, tau2);
-    poll[i] ~ normal(w[i,AllDates] + IMatrix * housebias[i], IMatrix * sigma_sd[i] + 1E-4 + Missing[i] * 1E4);
+    pollData[i] ~ normal(w[i,matchedDates] + IMatrix * housebias[i], IMatrix * sigma_sd[i] + 1E-4 + Missing[i] * 1E4);
   }
 } 

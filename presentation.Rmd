@@ -1,5 +1,5 @@
 ---
-title: "Long-Short Term State-Space Election Prognosis"
+title: "A long-short term event memory state-space model for multi-party elections"
 author: "Marcus Groß"
 date: "2019-30-07"
 output: pdf_document
@@ -13,19 +13,124 @@ knitr::opts_chunk$set(echo = TRUE)
 
 State-space models are a popular choice in modelling voting intentions and election results by using poll data. The presented multivariate state-space model attempts to go beyond random-walk or Kalman-filter approaches (with comparable performance to simple weighted survey averages) to the problem by introducing a long-short term event memory effect. This effect serves as reasonable explanation to the observation that the voter's share partially tends to reverse to the party's long-term trend after larger short term movements. Any event influencing the voter's share of a party is presumed to have a convex shape decomposable into a short term effect due to e.g. media spreading and a smaller long term effect remaining despite overlay effects of new events and forgetting. This effect is modelled by a mixture of a random walk and two contrasting autoregressive processes. By also taking advantage of the widely observed effect that government parties tend to fall in voter's share, whereas the opposite effect is observed for opposition parties, mid- and long-term predictions of election outcomes can be considerably be improved. The Stan-model is fitted and evaluated on poll data from seven pollsters for the German national elections ("Bundestagswahl") from 1994 to 2017, where low double digits (out-of-sample) improvements in prediction performance can be seen between 3- and 18-months prior elections. By taking into account the pollsters house effects, their poll errors and even more importantly their correlations in poll errors, an appropriate and realistic estimation error can be propagated. 
 
-## Get Poll Data
+```{r define pred date, warning=FALSE, echo = TRUE, message=FALSE}
+predDate <- "2017-03-25"
+```
 
-```{r get poll Data, warning=FALSE, echo = TRUE, message=FALSE}
+##Model
+
+$$poll_{party, t, pollster} \sim N(y_{party, t} + bias_{pollster} + \epsilon_{\text{poll}_{party, t}}; \text{ } \sigma_{pollster} + 1E-4)$$
+
+For an election this the bias and additional variance gets omitted and the upper expression gets simplified to:
+
+$$election_{party, t} \sim N(y_{party, t}; \text{ } 1E-4)$$
+
+$$y_{party, t} = y_{party, t-1} + \epsilon_{party, t} + \nu_{party, t} - \eta_{party, t}$$
+
+$$\epsilon_{party, t} \sim t(\mu_{party, t}, \sigma_{\text{shift}_{party}}, df = 5)$$
+
+$$ \nu_{party, t} = \theta_2 \cdot (\nu_{party, t-1} + \epsilon_{party, t-1})$$
+
+$$ \eta_{party, t} = \theta \cdot \eta_{party, t-1} + (1-\theta)\cdot\alpha(\nu_{party, t} +\epsilon_{party, t-1})$$
+
+## Get Poll and Election Data
+The poll data for the german election, the "Bundestagswahl" is scraped from the wep-page wahlrecht.de
+```{r get poll data, warning=FALSE, echo = TRUE, message=FALSE}
 require('dplyr')
 require('xml2')
 require('rvest')
 require('XML')
 require('magrittr')
 require('stringr')
+require('zoo')
+require('rstan')
 source('R/getPollData.R', encoding = 'UTF-8')
-pollData <- getPollData()
-head(pollData)
+pollData <- getPollData(predDate) %>% arrange(desc(Datum))
+knitr::kable(head(pollData))
+Elections <- read.csv2("data/Elections.csv", encoding = 'UTF-8')
+Elections$Datum <- as.Date(Elections$Datum)
+knitr::kable(Elections)
 ```
 
 ## Prepare Data
-hkjl
+```{r prepare data, warning=FALSE, echo = TRUE, message=FALSE}
+# combine election and poll data
+partyNames <- c("CDU/CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AfD")
+colnames(Elections)[1:length(partyNames)] <- partyNames
+electionsTemp <- Elections[Elections$Datum < predDate, c("Institut", "Datum", partyNames)]
+pollsTemp <- pollData[,c("Institut", "Datum", partyNames)]
+names(electionsTemp) <- names(pollsTemp)
+
+electionsTemp$Election = TRUE
+pollsTemp$Election = FALSE
+
+allData <- rbind(pollsTemp, electionsTemp)
+allData <- allData %>% filter(!is.na(Datum)) %>% arrange(Datum)
+
+#save missing positions and replace missings 
+Missing <- t((is.na(allData[,c(partyNames)]))) * 1
+for(i in partyNames){
+  allData[, i] <- na.locf(na.locf(allData[, i], fromLast = FALSE, na.rm = FALSE),
+                          fromLast = TRUE, na.rm = FALSE)}
+
+#create pollster dummy matrix
+IMatrix <- model.matrix(~ Institut - 1, data = allData)
+IMatrix <- IMatrix[, - which(colnames(IMatrix) == "InstitutElection")]
+
+#Remove pollster variable (institute), create numeric date (weeks since 1970)
+allData <- allData %>% select(-Institut)
+allData[,1] <- ceiling(as.numeric(difftime(allData[, "Datum"],
+                                        as.Date("1970-01-01"), units = "weeks")))
+allData <- as.matrix(allData)
+
+pollData <- allData[, partyNames]
+
+#Logit-transformation
+pollData <- log(pollData / (1 - pollData))
+
+#create weekly sequence for state-space
+timeSeq <- seq(min(allData[,"Datum"]), max(allData[,"Datum"]) + 52, by = 1)
+matchedDates = match(allData[,"Datum"], timeSeq)
+
+#get constants
+NParties <- ncol(pollData)
+NTOTAL = nrow(pollData)
+YTOTAL = length(timeSeq)
+NPollsters = ncol(IMatrix)
+
+#create matrix of government parties
+source('R/createGovMatrix.R', encoding = 'UTF-8')
+govMatrix <- createGovMatrix(partyNames, YTOTAL, Elections, timeSeq)
+
+#indicator of weeks of state-space time sequence with election and week after election
+electionIndikator <- rep(1, YTOTAL)
+electionIndikator[match(allData[rowSums(IMatrix) == 0, "Datum"], timeSeq) + 1] <- 0
+electionIndikator2 <- rep(1, YTOTAL)
+electionIndikator2[match(allData[rowSums(IMatrix) == 0, "Datum"], timeSeq)] <- 0
+```
+
+## Sampling with RStan
+
+```{r modelling, warning=FALSE, echo = TRUE, message=FALSE}
+#transpose data for stan script (due to indices)
+pollData <- t(pollData)
+govMatrix <- t(govMatrix)
+
+# mpModel <- stan_model(file = "stan_models/lsModelUni.stan")
+# f <- sampling(mpModel,
+#               data = list(NTOTAL = NTOTAL,
+#                           YTOTAL = YTOTAL,
+#                           NPollsters = NPollsters,
+#                           NParties = NParties,
+#                           matchedDates = matchedDates,
+#                           pollData = pollData,
+#                           IMatrix = IMatrix,
+#                           govMatrix = govMatrix,
+#                           Missing = Missing,
+#                           electionIndikator = electionIndikator,
+#                           electionIndikator2 = electionIndikator2),
+#               iter= 733, warmup = 400, chains = 2, cores = 2, seed = 124567,
+#               control = list(max_treedepth = 17, adapt_delta = 0.9))
+
+```
+
