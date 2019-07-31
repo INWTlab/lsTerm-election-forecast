@@ -50,7 +50,9 @@ Other election forecasts, such as the US-presidential forecasts by Nate Silver (
 
 >The basic principle is that polling has some systematic biases, in particular a tendency to overstate changes from the previous election
 
-How can we interpret this kind mean reversion process? Our idea is to model this as a long-short term memory process. Assuming weekly data and changes, we state that each shock or change in voter's intention for a party is attributable to events, e.g. political scandals, controversial  statements or candidate selection. The initial shock, which can be positive or negative, is covered by the media in the following weeks, increasing the initial effect. After some weeks the event or news might slowly disappear out of the people's minds, but not completely. The remaining effect accounts for the long-term effect of the initial event. Is there, however, some evidence in our data of the german federal election? To investigate this empirically, we smooth the polls on a weekly basis by a smoothing spline, compute the autocorrelation functions (acf's) on the weekly differences and average the acfs on all parties exluding AfD (as this right-winged party appeared only some years ago):
+There is some discussion in a 1993 paper by Andrew Gelman and Gary King on this issue (https://gking.harvard.edu/files/abs/variable-abs.shtml). In a 2013 paper of Drew Linzer (https://votamatic.org/wp-content/uploads/2013/07/Linzer-JASA13.pdf) a mean reversion effect is incorporated for the US presidential elections, by implicitely assuming that on state level, the voter's share is going to return to it's long term mean. However, such a form of mean stationarity, even more in multi-party systems is unrealistic, as there are clear trends over time for different parties. Formerly successful parties can disappear entirely. Therefore, we propose some kind of mixture between a non-stationary random walk and a mean-reversing stationary process for the voter's share over time.
+
+How can we interpret this kind mean reversion process? Our idea is to model this as a long-short term memory process. Assuming weekly data and weekly changes, we state that each shock or change in voter's intention for a party is attributable to events, e.g. political scandals, controversial  statements or candidate selection. The initial shock, which can be positive or negative, is covered by the media in the following weeks, increasing the initial effect. After some weeks the event or news might slowly disappear out of the people's minds, but not entirely. The remaining effect accounts for the long-term effect of the initial event. Is there, however, some evidence in our data of the german federal election? To investigate this empirically, we smooth the polls on a weekly basis by a smoothing spline, compute the autocorrelation functions (acf's) on the weekly differences and average the acfs on all parties exluding AfD (as this right-winged party appeared only some years ago):
 
 ```{r plot shock, warning=FALSE, echo = TRUE, message=FALSE}
 pollDataShock <- pollData %>% arrange(desc(Datum)) %>% na.locf(na.rm = FALSE) %>% 
@@ -71,32 +73,59 @@ abline(h = 0)
 We can clearly see that there is a positive autocorrelation within the first weeks, that turns negative between 8 and 15 weeks after the initial shock. The latter interval can be seen as the period where the events gets out of the short-term memory of the people. A more clear picture of the mean-reversing nature of polls can be seen, when we integrate the autocorrelation function: 
 
 ```{r plot integrated acfs, warning=FALSE, echo = TRUE, message=FALSE}
-plot(cumsum(acfs)-1, type = "l", xlab = "week after shock", ylab = "effect size")
-segments(x0=2.9,x1=31, y0 = 1.6, y1 = 1.6, lty = 3)
+plot(cumsum(acfs) - 1, type = "l", xlab = "week after shock", ylab = "effect size")
+segments(x0 = 2.9, x1 = 31, y0 = 1.6, y1 = 1.6, lty = 3)
 text(x = 26, y = 1.25, "Long-term memory")
 text(x = 9, y = 1.9, "Short-term memory")
 ```
 
-Another 
+Another peculiarity in elections over time is the effect that government party lose voter's share, whereas opposition partys tend to gain share. For the german federal elections between 1998 and 2017, the government party lost share in 10 of 12 cases in the next election and in 15 of 20 cases the opposition parties were gaining share. The same observation can be made in neighbouring countries with a similar multi-party election system such as the netherlands or sweden. That be due to the effect that government parties rather face negative events, whereas opposition parties face positive events.
+
+Central to any election forecast is the realistic assessment of the forecast error. We would see two different sources of uncertainty in the forecast:
+
+1. Uncertainty in future events, i.e. shocks to voter's share
+2. Uncertainty in polling
+
+The second one can again be split in three sources: 
+
+1. The common bias of all pollster's for a specific party
+2. The (house) bias of a specific pollster for a specific party
+3. The polling uncertainty of a specific pollster for a specific party
+
+Especially the first source is often completely ignored, but is also hard to estimate. For illustration we look at the finale polls just before the 2005 election and the outcome:
+
+```{r common bias, warning=FALSE, echo = TRUE, message=FALSE}
+knitr::kable(head(pollData %>% filter(Datum < "2005-09-18")))
+knitr::kable(Elections %>% filter(Year == 2005))
+```
+
+For the largest party, the CDU/CSU, all polls are much too high, exceeding the real outcome between 5 and 7 percentage points. Such large changes virtually never happen within one week, such that in this and many other case, one can strongly presume that there is a common bias for all pollsters. This kind of bias will be adjusted for in the poll's post-processing, such that it will be approx. zero just after the election.
+
+For the third source, one may presume that the sample size ("Befragte" in the poll data) is an important or even the only factor for determining uncertainty of a poll, but due to our experience the effect is negligable, as the pollsters have their own correction methods such that the actual poll outcome and the published polls differ substantially.
 
 ## Model
-Let $y_{party, t}$ be the true voter's share for a specific party for a certain time point $t$ if an election would be held, whereby $t$ is indexed on a weekly basis. Except for election dates, we cannot measure the voter's share directly, but have to rely on poll data. Poll data is published in irregular intervals by different institutes or pollsters. 
+Let $y_{party, t}$ be the true voter's share for a specific party, $pt$ for a certain time point $t$, if an election would be held, whereby $t$ is indexed on a weekly basis. Except for election dates, we cannot measure the voter's share directly, but have to rely on poll data. The poll data $poll_{pt, t, pll}$ for a party $pt$, time point $t$ and pollster $pll$ is published in irregular intervals by different institutes or pollsters. Beforehand, the poll data and the election voter's share were transformed on the logit scale (i.e. $poll_{pt, t, pll}^*$ and $election_{pt, t}^*$):
 
 
-$$poll_{pt, t, pll} \sim N(y_{pt, t} + bias_{pll} + \epsilon_{\text{poll}_{pt, t}}; \text{ } \sigma_{pll} + 1E-4)$$
+$$poll_{pt, t, pll}^* \sim N(y_{pt, t} + bias_{pll} + \epsilon_{\text{pollError}_{pt, t}}; \text{ } \sigma_{pll} + 1E-4)$$
 
 For an election this the bias and additional variance gets omitted and the upper expression gets simplified to:
 
-$$election_{pt, t} \sim N(y_{pt, t}; \text{ } 1E-4)$$
+$$election_{pt, t}^* \sim N(y_{pt, t}; \text{ } 1E-4)$$
 
-$$\epsilon_{\text{poll}_{pt, t}} = 0.98 \cdot \epsilon_{\text{poll}_{pt, t-1}}$$
+The common bias follows an AR1-process and is slowly hovering around zero: 
+$$\epsilon_{\text{pollError}_{pt, t}} = 0.98 \cdot \epsilon_{\text{pollError}_{pt, t-1}} + $$
 
 $$y_{pt, t} = y_{pt, t-1} + \epsilon_{pt, t} + \nu_{pt, t} - \eta_{pt, t}$$
 
+The shocks in vote's share follow a t-distribution with five degrees of freedom. The expectation $\mu_{pt, t}$ depends on the current state, i.e. state of government or opposition of the party, whereas the standard deviation $\sigma_{\text{shift}_{pt}}$ is different for each party $pt$:
 $$\epsilon_{pt, t} \sim t(\mu_{pt, t}, \sigma_{\text{shift}_{pt}}, df = 5)$$
+$$\mu_{pt, t} = opposition_{pt,t} + government_{pt,t}$$
 
+The positive short term memory effect $\nu_{pt, t}$ follows a process resembling AR1 :
 $$ \nu_{pt, t} = \theta_2 \cdot (\nu_{pt, t-1} + \epsilon_{pt, t-1})$$
 
+The negative short term effect $\eta_{pt, t}$ follows an AR1-type process:
 $$ \eta_{pt, t} = \theta \cdot \eta_{pt, t-1} + (1-\theta)\cdot\alpha(\nu_{pt, t} +\epsilon_{pt, t-1})$$
 
 ## Prepare Data
@@ -157,7 +186,7 @@ electionIndikator2[match(allData[rowSums(IMatrix) == 0, "Datum"], timeSeq)] <- 0
 ```
 
 ## Sampling with RStan
-Now we can compile the model and sample from it. The quite complex nature of the model requires a high tree depth of 17 or more. Together with the large number of parameters (several thousands) it takes several days to complete it, depending in the machine. A parrallelization using map_rect is planned, however. For this report, we pre-computed several models at different points in time and saved the samples. 
+Now we can compile the model and sample from it. The quite complex nature of the model requires a high tree depth of 17 or more. Together with the large number of parameters (several thousands) it takes several days to complete it, depending in the machine. A parallelization using map_rect is planned, however. For this report, we pre-computed several models at different points in time and saved the samples. 
 ```{r results, warning=FALSE, echo = TRUE, message=FALSE}
 #transpose data for stan script (due to indices)
 pollData <- t(pollData)
@@ -209,6 +238,6 @@ ggplot(data = plotData, aes(x = time, y = estimate, group = party,
   geom_point(data = plotPollData, aes(x = time, y = proportion, group = party))
 ```
 
-##Troubleshooting
+## Troubleshooting
 
-##Outlook
+## Outlook

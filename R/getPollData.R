@@ -188,6 +188,7 @@ getPollData <- function(dateMax = Sys.Date()) {
                   AfD,
                   Sonstige,
                   Befragte)
+  wahlProg %<>% filter(!is.na(Datum), !is.na(Institut), !is.na(SPD))
   
   return(wahlProg[wahlProg$Datum <= dateMax,])
 }
