@@ -39,22 +39,22 @@ transformed parameters{
   vector[YTOTAL] eps[NParties];
   vector[YTOTAL] w[NParties];
   
-  real substract;
-  real adds;
+  real eta;
+  real nu;
 
   for(i in 1:NParties){
     y[i,1]         =  y_start[i];
     pollError[i,1] =  pe_start[i];
     
-    substract = 0;
-    adds = 0;
+    eta = 0;
+    nu = 0;
     eps[i]  = epsilon[i] * sqrt(WT) * sigma_shift[i] + opposition + govMatrix[i] * government;
 
     for(n in 2:YTOTAL){
-      y[i,n]         = y[i,n-1]  + eps[i,n] + adds - substract;
+      y[i,n]         = y[i,n-1]  + eps[i,n] + nu - eta;
       pollError[i,n] =  0.98 * pollError[i,n-1] * electionIndikator[n] + epsilonPolls[i,n] * sqrt(WT2) * sigma_pollbias;
-      adds = (adds + eps[i,n]) * theta2;
-      substract = substract * theta + (alpha * (adds + eps[i,n])) * (1 - theta);
+      nu = (nu + eps[i,n]) * theta2;
+      eta = eta * theta + (alpha * (nu + eps[i,n])) * (1 - theta);
     }
     w[i] = y[i] + electionIndikator2 .* pollError[i];
   }

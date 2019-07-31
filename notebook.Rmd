@@ -13,32 +13,10 @@ knitr::opts_chunk$set(echo = TRUE)
 
 State-space models are a popular choice in modelling voting intentions and election results by using poll data. The presented multivariate state-space model attempts to go beyond random-walk or Kalman-filter approaches (with comparable performance to simple weighted survey averages) to the problem by introducing a long-short term event memory effect. This effect serves as reasonable explanation to the observation that the voter's share partially tends to reverse to the party's long-term trend after larger short term movements. Any event influencing the voter's share of a party is presumed to have a convex shape decomposable into a short term effect due to e.g. media spreading and a smaller long term effect remaining despite overlay effects of new events and forgetting. This effect is modelled by a mixture of a random walk and two contrasting autoregressive processes. By also taking advantage of the widely observed effect that government parties tend to fall in voter's share, whereas the opposite effect is observed for opposition parties, mid- and long-term predictions of election outcomes can be considerably be improved. The Stan-model is fitted and evaluated on poll data from seven pollsters for the German national elections ("Bundestagswahl") from 1994 to 2017, where low double digits (out-of-sample) improvements in prediction performance can be seen between 3- and 18-months prior elections. By taking into account the pollsters house effects, their poll errors and even more importantly their correlations in poll errors, an appropriate and realistic estimation error can be propagated. 
 
-
-## Introduction
-
 ## Data
+We have data on more than 4000 polls from 7 different pollsters between the November 1st, 1994 until the current date for the german federal election ("Bundestagswahl"). These data are scraped from the web page www.wahlrecht.de, which collects all available poll data and is updated very often. Furthermore, we have the election outcome data for all elections since 1998 and the respective partys forming the government and oppositions. Data is available for the six large parties "CDU/CSU", "SPD", "GRÜNE", "FDP", "Linke" and "AfD".
 
-## Model
-Let $y_{party, t}$ be the true voter's share for a specific party for a certain time point $t$ if an election would be held, whereby $t$ is indexed on a weekly basis. Except for election dates, we cannot measure the voter's share directly, but have to rely on poll data. Poll data is published in irregular intervals by different institutes or pollsters. 
-
-
-$$poll_{party, t, pollster} \sim N(y_{party, t} + bias_{pollster} + \epsilon_{\text{poll}_{party, t}}; \text{ } \sigma_{pollster} + 1E-4)$$
-
-For an election this the bias and additional variance gets omitted and the upper expression gets simplified to:
-
-$$election_{party, t} \sim N(y_{party, t}; \text{ } 1E-4)$$
-
-$$\epsilon_{\text{poll}_{party, t}} = 0.98 \cdot \epsilon_{\text{poll}_{party, t-1}}$$
-
-$$y_{party, t} = y_{party, t-1} + \epsilon_{party, t} + \nu_{party, t} - \eta_{party, t}$$
-
-$$\epsilon_{party, t} \sim t(\mu_{party, t}, \sigma_{\text{shift}_{party}}, df = 5)$$
-
-$$ \nu_{party, t} = \theta_2 \cdot (\nu_{party, t-1} + \epsilon_{party, t-1})$$
-
-$$ \eta_{party, t} = \theta \cdot \eta_{party, t-1} + (1-\theta)\cdot\alpha(\nu_{party, t} +\epsilon_{party, t-1})$$
-
-## Get Poll and Election Data
+### Get Poll and Election Data
 First, we set a prediction date, which is the 25th of march 2017, exactly six months prior election.
 ```{r define pred date, warning=FALSE, echo = TRUE, message=FALSE}
 predDate <- "2017-03-25"
@@ -62,6 +40,64 @@ Elections <- read.csv2("data/Elections.csv", encoding = 'UTF-8')
 Elections$Datum <- as.Date(Elections$Datum)
 knitr::kable(Elections)
 ```
+
+
+## Motivation
+
+At the latest since the great attention, the election forecasts of the US presidential elections on fivethirtyeight.com by Nate Silver have received, data based election forecast are of great interest in the public as well as in academia. There were already some attempts using *STAN*, which rely on state-space models, where the state (voter's intention) is modeled by a random walk. This approach follows the 2005 paper of Simon Jackman (https://www.tandfonline.com/doi/abs/10.1080/10361140500302472) and was in predicting the australian election (cf. http://freerangestats.info/blog/2017/06/24/oz-polls-statespace), for example. While this method gives valuable insights and does a good job in removing bias from different pollsters, to our experience it does not really help in doing mid- or long term forecasts compared to very simple poll-averaging methods. The question here is, if we can do better than just take the current latent state or voter's intention as our forecast for the actual election that may be six months or one year in the future.
+
+Other election forecasts, such as the US-presidential forecasts by Nate Silver (https://fivethirtyeight.com/features/a-users-guide-to-fivethirtyeights-2016-general-election-forecast/) and multi-party forecasts for the UK-election (http://www.electionforecast.co.uk) or for the german federal electin (http://zweitstimme.org) state that there is some form of mean-reversion in polls or election results in the long term and incorporate this into their election forecast one way or another. In example http://www.electionforecast.co.uk states that: 
+
+>The basic principle is that polling has some systematic biases, in particular a tendency to overstate changes from the previous election
+
+How can we interpret this kind mean reversion process? Our idea is to model this as a long-short term memory process. Assuming weekly data and changes, we state that each shock or change in voter's intention for a party is attributable to events, e.g. political scandals, controversial  statements or candidate selection. The initial shock, which can be positive or negative, is covered by the media in the following weeks, increasing the initial effect. After some weeks the event or news might slowly disappear out of the people's minds, but not completely. The remaining effect accounts for the long-term effect of the initial event. Is there, however, some evidence in our data of the german federal election? To investigate this empirically, we smooth the polls on a weekly basis by a smoothing spline, compute the autocorrelation functions (acf's) on the weekly differences and average the acfs on all parties exluding AfD (as this right-winged party appeared only some years ago):
+
+```{r plot shock, warning=FALSE, echo = TRUE, message=FALSE}
+pollDataShock <- pollData %>% arrange(desc(Datum)) %>% na.locf(na.rm = FALSE) %>% 
+  na.locf(fromLast = TRUE)
+dateSeq <- seq(min(pollDataShock$Datum), max(pollDataShock$Datum) , by = "week")
+smoothProportions <- sapply(colnames(pollDataShock)[3:7],
+                            function(y){ 
+                              sSpline <- smooth.spline(x = pollDataShock$Datum,
+                                                       y = unlist(pollDataShock[,y]))
+                              predict(sSpline, x = as.numeric(dateSeq))$y
+                            })
+
+acfs <- rowMeans(apply(apply(smoothProportions, 2, diff), 2,
+                       function(x) acf(x, 30, plot = FALSE)$acf))
+plot(acfs, type = "h", xlab = "week after shock", ylab = "autocorrelation")
+abline(h = 0)
+```
+We can clearly see that there is a positive autocorrelation within the first weeks, that turns negative between 8 and 15 weeks after the initial shock. The latter interval can be seen as the period where the events gets out of the short-term memory of the people. A more clear picture of the mean-reversing nature of polls can be seen, when we integrate the autocorrelation function: 
+
+```{r plot integrated acfs, warning=FALSE, echo = TRUE, message=FALSE}
+plot(cumsum(acfs)-1, type = "l", xlab = "week after shock", ylab = "effect size")
+segments(x0=2.9,x1=31, y0 = 1.6, y1 = 1.6, lty = 3)
+text(x = 26, y = 1.25, "Long-term memory")
+text(x = 9, y = 1.9, "Short-term memory")
+```
+
+Another 
+
+## Model
+Let $y_{party, t}$ be the true voter's share for a specific party for a certain time point $t$ if an election would be held, whereby $t$ is indexed on a weekly basis. Except for election dates, we cannot measure the voter's share directly, but have to rely on poll data. Poll data is published in irregular intervals by different institutes or pollsters. 
+
+
+$$poll_{pt, t, pll} \sim N(y_{pt, t} + bias_{pll} + \epsilon_{\text{poll}_{pt, t}}; \text{ } \sigma_{pll} + 1E-4)$$
+
+For an election this the bias and additional variance gets omitted and the upper expression gets simplified to:
+
+$$election_{pt, t} \sim N(y_{pt, t}; \text{ } 1E-4)$$
+
+$$\epsilon_{\text{poll}_{pt, t}} = 0.98 \cdot \epsilon_{\text{poll}_{pt, t-1}}$$
+
+$$y_{pt, t} = y_{pt, t-1} + \epsilon_{pt, t} + \nu_{pt, t} - \eta_{pt, t}$$
+
+$$\epsilon_{pt, t} \sim t(\mu_{pt, t}, \sigma_{\text{shift}_{pt}}, df = 5)$$
+
+$$ \nu_{pt, t} = \theta_2 \cdot (\nu_{pt, t-1} + \epsilon_{pt, t-1})$$
+
+$$ \eta_{pt, t} = \theta \cdot \eta_{pt, t-1} + (1-\theta)\cdot\alpha(\nu_{pt, t} +\epsilon_{pt, t-1})$$
 
 ## Prepare Data
 ```{r prepare data, warning=FALSE, echo = TRUE, message=FALSE}
