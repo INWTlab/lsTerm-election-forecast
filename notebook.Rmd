@@ -1,8 +1,11 @@
 ---
 title: "A long-short term event memory state-space model for multi-party elections"
 author: "Marcus Groß"
-date: "2019-30-07"
-output: pdf_document
+date: '2019-31-07'
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
@@ -79,7 +82,7 @@ text(x = 26, y = 1.25, "Long-term memory")
 text(x = 9, y = 1.9, "Short-term memory")
 ```
 
-Another peculiarity in elections over time is the effect that government party lose voter's share, whereas opposition partys tend to gain share. For the german federal elections between 1998 and 2017, the government party lost share in 10 of 12 cases in the next election and in 15 of 20 cases the opposition parties were gaining share. The same observation can be made in neighbouring countries with a similar multi-party election system such as the netherlands or sweden. That be due to the effect that government parties rather face negative events, whereas opposition parties face positive events.
+Another peculiarity in elections over time is the effect that government party lose voter's share, whereas opposition partys tend to gain share. For the german federal elections between 1998 and 2017, the government party lost share in 10 of 12 cases in the next election and in 15 of 20 cases the opposition parties were gaining share. The same observation can be made in neighbouring countries with a similar multi-party election system such as the Netherlands or Sweden. That be due to the effect that government parties rather face negative events, whereas opposition parties face positive events.
 
 Central to any election forecast is the realistic assessment of the forecast error. We would see two different sources of uncertainty in the forecast:
 
@@ -104,37 +107,38 @@ For the largest party, the CDU/CSU, all polls are much too high, exceeding the r
 For the third source, one may presume that the sample size ("Befragte" in the poll data) is an important or even the only factor for determining uncertainty of a poll, but due to our experience the effect is negligable, as the pollsters have their own correction methods such that the actual poll outcome and the published polls differ substantially.
 
 ## Model
-Let $y_{party, t}$ be the true voter's share for a specific party, $pt$ for a certain time point $t$, if an election would be held, whereby $t$ is indexed on a weekly basis. Except for election dates, we cannot measure the voter's share directly, but have to rely on poll data. The poll data $poll_{pt, t, pll}$ for a party $pt$, time point $t$ and pollster $pll$ is published in irregular intervals by different institutes or pollsters. Beforehand, the poll data and the election voter's share were transformed on the logit scale (i.e. $poll_{pt, t, pll}^*$ and $election_{pt, t}^*$):
+Let $y_{party, t}$ be the true voter's share for a specific party, $pt$ for a certain time point $t$, if an election would be held, whereby $t$ is indexed on a weekly basis. Except for election dates, we cannot measure the voter's share directly, but have to rely on poll data. The poll data $poll_{pt, t, pll}$ for a party $pt$, time point $t$ and pollster $pll$ is published in irregular intervals by different institutes or pollsters. Beforehand, the poll data and the election voter's share were transformed on the logit scale:
 
 
-$$poll_{pt, t, pll}^* \sim N(y_{pt, t} + bias_{pt,pll} + \epsilon_{\text{pollError}_{pt, t}}\text{ , } \sigma_{pt,pll} + 1E-4)$$
+$$logit(poll_{pt, t, pll}) \sim N(y_{pt, t} + bias_{pt,pll} + \epsilon_{\text{pollError}_{pt, t}}\text{ , } \sigma_{pt,pll} + 1E-4)$$
 The pollsters housebias and poll error are coming from a common distribution:
 $$bias_{pt,pll} \sim N(0, \tau)$$
 $$\sigma_{pt,pll} \sim N(0, \tau_2)$$
 
 For an election this the bias and additional variance gets omitted and the upper expression gets simplified to:
 
-$$election_{pt, t}^* \sim N(y_{pt, t}\text{ , } 1E-4)$$
+$$logit(election_{pt, t}) \sim N(y_{pt, t}\text{ , } 1E-4)$$
 
-The common bias follows an AR1-process and is slowly hovering around zero: 
+The common pollster bias follows an AR1-process and is slowly hovering around zero. The AR1 parameter was fixed to a value of 0.98 as it is not identifiable (aka cannot be learned from data) and corresponds to a half-life time of about 9 months. Its value is set to zero just after election as we assume that the pollsters adjust for the bias afterwards.
 $$\epsilon_{\text{pollError}_{pt, t}} = 0.98 \cdot \epsilon_{\text{pollError}_{pt, t-1}} + \epsilon_{\text{polls}_{pt, t}}$$
 
-The shifts in the common bias of the pollsters for a specific party follow a t-distribution with five degrees of freedom and a standard deviation $\sigma_{\text{pollbias}_{pt}}$ that is different for each party $pt$:
+The shifts in the common bias of the pollsters for a specific party follow a t-distribution with five degrees of freedom and a standard deviation $\sigma_{\text{pollbias}}$ that is different for each party $pt$:
 $$\epsilon_{\text{polls}_{pt, t}} \sim t(0, \sigma_{\text{pollbias}_{pt}}, df = 5)$$
 
 $$y_{pt, t} = y_{pt, t-1} + \epsilon_{pt, t} + \nu_{pt, t} - \eta_{pt, t}$$
 
 The shocks in voter's share follow a t-distribution with five degrees of freedom. The expectation $\mu_{pt, t}$ depends on the current state, i.e. state of government or opposition of the party, whereas the standard deviation $\sigma_{\text{shift}_{pt}}$ is different for each party $pt$:
 $$\epsilon_{pt, t} \sim t(\mu_{pt, t}, \sigma_{\text{shift}_{pt}}, df = 5)$$
+As explained in the previous section, the expectation of the weekly shift in voter's share might be influenced, whether a party is part of the government or the opposition.
 $$\mu_{pt, t} = opposition_{pt,t} + government_{pt,t}$$
 
 The positive short term memory effect $\nu_{pt, t}$ follows a process resembling AR1 :
 $$ \nu_{pt, t} = \theta_2 \cdot (\nu_{pt, t-1} + \epsilon_{pt, t-1})$$
 
-The diminishing short term effect parameter $\eta_{pt, t}$ also follows a process resembling AR1. The additional parameter $\alpha$ governs the amount of "forgetting". For $\alpha=1$, the long term effect is zero, while for $alpha=0$, the long-term effect equals the short term effect. 
+The diminishing short term effect parameter $\eta_{pt, t}$ also follows a process resembling AR1. The additional parameter $\alpha$ governs the amount of "forgetting". For $\alpha=1$, the long term effect is zero, while for $\alpha=0$, the long-term effect equals the short term effect. 
 $$ \eta_{pt, t} = \theta \cdot \eta_{pt, t-1} + (1-\theta)\cdot\alpha(\nu_{pt, t} +\epsilon_{pt, t-1})$$
 
-Within Stan, the model, transformed parameters and priors are the following:
+Within *STAN*, the model, transformed parameters and priors (mostly weakly informative, matched on the right scale) are the following:
 
 ```{r stanCode, warning=FALSE, echo = TRUE, message=FALSE, eval = FALSE}
 transformed parameters{
@@ -189,8 +193,11 @@ model {
   }
 } 
 ```
+STAN doesn't support ragged arrays. Thus, for missing data, especially for the "AfD" party which didn't appear before the last third of the observation date interval, an extremely high standard deviation was chosen.
 
 ## Prepare Data
+
+Before we compile and sample from the model, the poll and election data is binded together into a single data frame. We also form a dummy matrix of the pollsters ("IMatrix"), a missing matrix ("Missing") and indicators whether a certain observation of the combined data is an election ("electionIndikator") or the week after election ("electionIndikator2"). Additionally we have to match the weekly time sequence of the underlying state (voter's share) with the time of the actual polls ("matchedDates") and a matrix that assigns the government/opposition state for each party and point in time ("govMatrix").
 ```{r prepare data, warning=FALSE, echo = TRUE, message=FALSE}
 # combine election and poll data
 partyNames <- c("CDU/CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AfD")
@@ -274,32 +281,89 @@ load("model_results/Model_2017_03_25.RData")
 ```
 
 ## Results
+### Visualization
+Six months before election, the social democratic party ("SPD") experienced a large increase (from slightly over 20\% to more than 30\%  in the polls) in voter's sharedue to a hype of the shortly announced chancellor candidate Martin Schulz. From the picture below, we can clearly see a mean-reversing trend until election date for the "SPD" (in red):
 ```{r modelling, warning=FALSE, echo = TRUE, message=FALSE}
 plotData <- lapply(1:NParties, function(x){
   data.frame(estimate = samples$y[,x,] %>% logistic %>% colMeans,
              lower = apply(samples$y[,x,] %>% logistic, 2, quantile, 0.025),
              upper = apply(samples$y[,x,] %>% logistic, 2, quantile, 0.975),
              time = as.POSIXct(timeSeq*60*60*24*7, origin = "1970-01-01"),
-             party = rownames(pollData)[x])
+             party = factor(rownames(pollData)[x]))
 }) %>% bind_rows()
-
-plotPollData <- data.frame(t(pollData) %>% logistic,
-                           time = as.POSIXct(timeSeq[matchedDates]*60*60*24*7,
-                                             origin = "1970-01-01"))
+plotPollData <- as.data.frame(logistic(t(pollData)))
+plotPollData <- cbind(plotPollData,
+                           data.frame(time = as.POSIXct(timeSeq[matchedDates]*60*60*24*7,
+                                             origin = "1970-01-01")))
 
 plotPollData <- plotPollData %>% as_tibble %>% gather(key = "party",
                                                       value = "proportion", -time)
-
+partyColors <- c("dodgerblue4", "black", "yellow", "green", "purple", "red")
 ggplot(data = plotData, aes(x = time, y = estimate, group = party,
-                            colour = factor(party))) + geom_line() +
+                            colour = party)) + geom_line() + 
   geom_ribbon(aes(ymin = lower, ymax = upper,
-                  fill = factor(party)),alpha = 0.3, colour = NA) + 
+                  fill = party),alpha = 0.3, colour = NA, show.legend = FALSE) + 
+    scale_color_manual(values=partyColors) +   scale_fill_manual(values=partyColors) +
   xlim(as.POSIXct(c("2016-01-01", "2017-09-30"))) + ylim(0,0.42) + 
   geom_vline(xintercept = as.POSIXct("2017-09-25")) + 
   geom_vline(xintercept = as.POSIXct(predDate)) + 
+  annotate(geom = "text", x=as.POSIXct(predDate), y=0,
+           label="prediction date", angle = 25, size = 2) +
+  annotate(geom = "text", x=as.POSIXct("2017-09-25"),
+           y=0, label="election date", angle = 25, size = 2)  +
   geom_point(data = plotPollData, aes(x = time, y = proportion, group = party))
 ```
 
+### Assessing predictive performance
+To assess the predictive performance, we evaluate the prediction with the RMSE ("Root Mean Square Error"). As competitors or comparison we use the most recent poll as well as the average of the most recent poll of each pollster:
+```{r performance, warning=FALSE, echo = TRUE, message=FALSE}
+predElection <- samples$y[,,which(timeSeq == 
+                                    ceiling(as.numeric(difftime(as.Date("2017-09-25"),
+                                                                as.Date("1970-01-01"),
+                                                                units = "weeks"))))] %>%
+  logistic %>% colMeans
+#Model predictions:
+predElection
+#Recent polls:
+knitr::kable(pollsTemp %>% filter(Datum <= predDate) %>% 
+  arrange(desc(Datum)) %>% 
+  group_by(Institut) %>% slice(1))
+
+#Compute competitors
+predRecent <- pollsTemp %>% filter(Datum <= predDate) %>% 
+  arrange(desc(Datum)) %>% select(partyNames) %>% 
+  slice(1) %>% unlist
+predRecent
+predAvgRecent <- pollsTemp %>% filter(Datum <= predDate) %>% 
+  arrange(desc(Datum)) %>% 
+  group_by(Institut) %>% slice(1) %>% ungroup %>% 
+  select(partyNames) %>% colMeans %>% unlist
+predAvgRecent
+
+#RMSE model and competitors
+sqrt(mean((predElection - unlist(Elections %>% filter(Year == 2017) %>% 
+                                   select(partyNames)))^2)) %>% round(4)
+sqrt(mean((predRecent - unlist(Elections %>% filter(Year == 2017) %>% 
+                                 select(partyNames)))^2)) %>% round(4)
+sqrt(mean((predAvgRecent - unlist(Elections %>% filter(Year == 2017) %>% 
+                                    select(partyNames)))^2)) %>% round(4)
+
+
+```
+
+We can see, that --at least at this point in time, six months before election-- our model estimates beat the pollsters by a fairly large amount, a 26\% lower RMSE than the average of the recent predictions.
+
+Now, we evaluate the performance on a monthly basis from 12 months before election until the election week:
+
 ## Troubleshooting
+The iterations exceeds maximum tree size, for tree_depth <18 (but results are ok for tree_depth larger than 15). Fortunately, there are no divergent samples for adapt_stepsize value of 0.9. The models have been running with rather low sample size and 
 
 ## Outlook
+### Model speed up 
+The model is quite slow and about 1 week to compute
+  - Use map_rect on party level to speed up computation
+  - Faster computation with future *STAN* versions, model could benefit from faster indexin in *STAN* 2.20
+  - Potentially re-parameterize model
+
+#### Model extensions
+Instead of independent shifts and common pollster errors, i.e. independent t-distributions, multivariate t-distributions accounting for correlated shocks and poll errors could be employed. Also further improvements by introducing a mid-term memory parameter are possible. Both extensions can be found in the stan_models directory. However, these are even slower and the predictive performance as not been studied in detail.
