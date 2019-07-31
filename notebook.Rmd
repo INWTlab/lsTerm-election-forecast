@@ -107,26 +107,88 @@ For the third source, one may presume that the sample size ("Befragte" in the po
 Let $y_{party, t}$ be the true voter's share for a specific party, $pt$ for a certain time point $t$, if an election would be held, whereby $t$ is indexed on a weekly basis. Except for election dates, we cannot measure the voter's share directly, but have to rely on poll data. The poll data $poll_{pt, t, pll}$ for a party $pt$, time point $t$ and pollster $pll$ is published in irregular intervals by different institutes or pollsters. Beforehand, the poll data and the election voter's share were transformed on the logit scale (i.e. $poll_{pt, t, pll}^*$ and $election_{pt, t}^*$):
 
 
-$$poll_{pt, t, pll}^* \sim N(y_{pt, t} + bias_{pll} + \epsilon_{\text{pollError}_{pt, t}}; \text{ } \sigma_{pll} + 1E-4)$$
+$$poll_{pt, t, pll}^* \sim N(y_{pt, t} + bias_{pt,pll} + \epsilon_{\text{pollError}_{pt, t}}\text{ , } \sigma_{pt,pll} + 1E-4)$$
+The pollsters housebias and poll error are coming from a common distribution:
+$$bias_{pt,pll} \sim N(0, \tau)$$
+$$\sigma_{pt,pll} \sim N(0, \tau_2)$$
 
 For an election this the bias and additional variance gets omitted and the upper expression gets simplified to:
 
-$$election_{pt, t}^* \sim N(y_{pt, t}; \text{ } 1E-4)$$
+$$election_{pt, t}^* \sim N(y_{pt, t}\text{ , } 1E-4)$$
 
 The common bias follows an AR1-process and is slowly hovering around zero: 
-$$\epsilon_{\text{pollError}_{pt, t}} = 0.98 \cdot \epsilon_{\text{pollError}_{pt, t-1}} + $$
+$$\epsilon_{\text{pollError}_{pt, t}} = 0.98 \cdot \epsilon_{\text{pollError}_{pt, t-1}} + \epsilon_{\text{polls}_{pt, t}}$$
+
+The shifts in the common bias of the pollsters for a specific party follow a t-distribution with five degrees of freedom and a standard deviation $\sigma_{\text{pollbias}_{pt}}$ that is different for each party $pt$:
+$$\epsilon_{\text{polls}_{pt, t}} \sim t(0, \sigma_{\text{pollbias}_{pt}}, df = 5)$$
 
 $$y_{pt, t} = y_{pt, t-1} + \epsilon_{pt, t} + \nu_{pt, t} - \eta_{pt, t}$$
 
-The shocks in vote's share follow a t-distribution with five degrees of freedom. The expectation $\mu_{pt, t}$ depends on the current state, i.e. state of government or opposition of the party, whereas the standard deviation $\sigma_{\text{shift}_{pt}}$ is different for each party $pt$:
+The shocks in voter's share follow a t-distribution with five degrees of freedom. The expectation $\mu_{pt, t}$ depends on the current state, i.e. state of government or opposition of the party, whereas the standard deviation $\sigma_{\text{shift}_{pt}}$ is different for each party $pt$:
 $$\epsilon_{pt, t} \sim t(\mu_{pt, t}, \sigma_{\text{shift}_{pt}}, df = 5)$$
 $$\mu_{pt, t} = opposition_{pt,t} + government_{pt,t}$$
 
 The positive short term memory effect $\nu_{pt, t}$ follows a process resembling AR1 :
 $$ \nu_{pt, t} = \theta_2 \cdot (\nu_{pt, t-1} + \epsilon_{pt, t-1})$$
 
-The negative short term effect $\eta_{pt, t}$ follows an AR1-type process:
+The diminishing short term effect parameter $\eta_{pt, t}$ also follows a process resembling AR1. The additional parameter $\alpha$ governs the amount of "forgetting". For $\alpha=1$, the long term effect is zero, while for $alpha=0$, the long-term effect equals the short term effect. 
 $$ \eta_{pt, t} = \theta \cdot \eta_{pt, t-1} + (1-\theta)\cdot\alpha(\nu_{pt, t} +\epsilon_{pt, t-1})$$
+
+Within Stan, the model, transformed parameters and priors are the following:
+
+```{r stanCode, warning=FALSE, echo = TRUE, message=FALSE, eval = FALSE}
+transformed parameters{
+  vector[YTOTAL] y[NParties];
+  vector[YTOTAL] pollError[NParties];
+  vector[YTOTAL] eps[NParties];
+  vector[YTOTAL] w[NParties];
+  real eta;
+  real nu;
+
+  for(i in 1:NParties){
+    y[i,1]         =  y_start[i];
+    pollError[i,1] =  pe_start[i];
+    eta = 0;
+    nu = 0;
+    eps[i]  = epsilon[i] * sqrt(WT) * sigma_shift[i] + opposition + 
+      govMatrix[i] * government;
+    for(n in 2:YTOTAL){
+      y[i,n]         = y[i,n-1]  + eps[i,n] + nu - eta;
+      pollError[i,n] =  0.98 * pollError[i,n-1] * electionIndikator[n] + 
+        epsilonPolls[i,n] * sqrt(WT2) * sigma_pollbias;
+      nu = (nu + eps[i,n]) * theta2;
+      eta = eta * theta + (alpha * (nu + eps[i,n])) * (1 - theta);
+    }
+    w[i] = y[i] + electionIndikator2 .* pollError[i];
+  }
+}
+model {
+  sigma_shift ~ normal(0, tau3);
+  sigma_pollbias ~ normal(0.025, 0.0125);
+  pe_start ~ normal(0, tau4);
+  y_start ~ normal(0, 2);
+  government ~ normal(0, 0.0005);
+  opposition ~ normal(0, 0.0005);
+  tau2 ~ normal(0, 0.05);
+  theta ~ beta(10, 3);
+  theta2 ~ beta(3, 3);
+  alpha ~ beta(5, 5);
+  tau ~ normal(0, 0.05);
+  tau3 ~ normal(0, 0.03);
+  tau4 ~ normal(0, 0.05);
+  WT ~ scaled_inv_chi_square(5,1);
+  WT2 ~ scaled_inv_chi_square(5,1);
+
+  for(i in 1:NParties){
+    housebias[i] ~ normal(0, tau);
+    epsilon[i] ~ normal(0, 1);
+    epsilonPolls[i] ~ normal(0, 1);
+    sigma_sd[i] ~ normal(0.05, tau2);
+    pollData[i] ~ normal(w[i,matchedDates] + IMatrix * housebias[i],
+                         IMatrix * sigma_sd[i] + 1E-4 + Missing[i] * 1E4);
+  }
+} 
+```
 
 ## Prepare Data
 ```{r prepare data, warning=FALSE, echo = TRUE, message=FALSE}
