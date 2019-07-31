@@ -13,17 +13,22 @@ knitr::opts_chunk$set(echo = TRUE)
 
 State-space models are a popular choice in modelling voting intentions and election results by using poll data. The presented multivariate state-space model attempts to go beyond random-walk or Kalman-filter approaches (with comparable performance to simple weighted survey averages) to the problem by introducing a long-short term event memory effect. This effect serves as reasonable explanation to the observation that the voter's share partially tends to reverse to the party's long-term trend after larger short term movements. Any event influencing the voter's share of a party is presumed to have a convex shape decomposable into a short term effect due to e.g. media spreading and a smaller long term effect remaining despite overlay effects of new events and forgetting. This effect is modelled by a mixture of a random walk and two contrasting autoregressive processes. By also taking advantage of the widely observed effect that government parties tend to fall in voter's share, whereas the opposite effect is observed for opposition parties, mid- and long-term predictions of election outcomes can be considerably be improved. The Stan-model is fitted and evaluated on poll data from seven pollsters for the German national elections ("Bundestagswahl") from 1994 to 2017, where low double digits (out-of-sample) improvements in prediction performance can be seen between 3- and 18-months prior elections. By taking into account the pollsters house effects, their poll errors and even more importantly their correlations in poll errors, an appropriate and realistic estimation error can be propagated. 
 
-```{r define pred date, warning=FALSE, echo = TRUE, message=FALSE}
-predDate <- "2017-03-25"
-```
 
-##Model
+## Introduction
+
+## Data
+
+## Model
+Let $y_{party, t}$ be the true voter's share for a specific party for a certain time point $t$ if an election would be held, whereby $t$ is indexed on a weekly basis. Except for election dates, we cannot measure the voter's share directly, but have to rely on poll data. Poll data is published in irregular intervals by different institutes or pollsters. 
+
 
 $$poll_{party, t, pollster} \sim N(y_{party, t} + bias_{pollster} + \epsilon_{\text{poll}_{party, t}}; \text{ } \sigma_{pollster} + 1E-4)$$
 
 For an election this the bias and additional variance gets omitted and the upper expression gets simplified to:
 
 $$election_{party, t} \sim N(y_{party, t}; \text{ } 1E-4)$$
+
+$$\epsilon_{\text{poll}_{party, t}} = 0.98 \cdot \epsilon_{\text{poll}_{party, t-1}}$$
 
 $$y_{party, t} = y_{party, t-1} + \epsilon_{party, t} + \nu_{party, t} - \eta_{party, t}$$
 
@@ -34,9 +39,15 @@ $$ \nu_{party, t} = \theta_2 \cdot (\nu_{party, t-1} + \epsilon_{party, t-1})$$
 $$ \eta_{party, t} = \theta \cdot \eta_{party, t-1} + (1-\theta)\cdot\alpha(\nu_{party, t} +\epsilon_{party, t-1})$$
 
 ## Get Poll and Election Data
-The poll data for the german election, the "Bundestagswahl" is scraped from the wep-page wahlrecht.de
+First, we set a prediction date, which is the 25th of march 2017, exactly six months prior election.
+```{r define pred date, warning=FALSE, echo = TRUE, message=FALSE}
+predDate <- "2017-03-25"
+```
+
+The poll data for the german election, the "Bundestagswahl" is scraped from the wep-page wahlrecht.de.
 ```{r get poll data, warning=FALSE, echo = TRUE, message=FALSE}
 require('dplyr')
+require('tidyr')
 require('xml2')
 require('rvest')
 require('XML')
@@ -110,8 +121,8 @@ electionIndikator2[match(allData[rowSums(IMatrix) == 0, "Datum"], timeSeq)] <- 0
 ```
 
 ## Sampling with RStan
-
-```{r modelling, warning=FALSE, echo = TRUE, message=FALSE}
+Now we can compile the model and sample from it. The quite complex nature of the model requires a high tree depth of 17 or more. Together with the large number of parameters (several thousands) it takes several days to complete it, depending in the machine. A parrallelization using map_rect is planned, however. For this report, we pre-computed several models at different points in time and saved the samples. 
+```{r results, warning=FALSE, echo = TRUE, message=FALSE}
 #transpose data for stan script (due to indices)
 pollData <- t(pollData)
 govMatrix <- t(govMatrix)
@@ -129,8 +140,39 @@ govMatrix <- t(govMatrix)
 #                           Missing = Missing,
 #                           electionIndikator = electionIndikator,
 #                           electionIndikator2 = electionIndikator2),
-#               iter= 733, warmup = 400, chains = 2, cores = 2, seed = 124567,
+#               iter= 700, warmup = 600, chains = 4, cores = 4, seed = 124567,
 #               control = list(max_treedepth = 17, adapt_delta = 0.9))
 
+load("model_results/Model_2017_03_25.RData")
 ```
 
+## Results
+```{r modelling, warning=FALSE, echo = TRUE, message=FALSE}
+plotData <- lapply(1:NParties, function(x){
+  data.frame(estimate = samples$y[,x,] %>% logistic %>% colMeans,
+             lower = apply(samples$y[,x,] %>% logistic, 2, quantile, 0.025),
+             upper = apply(samples$y[,x,] %>% logistic, 2, quantile, 0.975),
+             time = as.POSIXct(timeSeq*60*60*24*7, origin = "1970-01-01"),
+             party = rownames(pollData)[x])
+}) %>% bind_rows()
+
+plotPollData <- data.frame(t(pollData) %>% logistic,
+                           time = as.POSIXct(timeSeq[matchedDates]*60*60*24*7,
+                                             origin = "1970-01-01"))
+
+plotPollData <- plotPollData %>% as_tibble %>% gather(key = "party",
+                                                      value = "proportion", -time)
+
+ggplot(data = plotData, aes(x = time, y = estimate, group = party,
+                            colour = factor(party))) + geom_line() +
+  geom_ribbon(aes(ymin = lower, ymax = upper,
+                  fill = factor(party)),alpha = 0.3, colour = NA) + 
+  xlim(as.POSIXct(c("2016-01-01", "2017-09-30"))) + ylim(0,0.42) + 
+  geom_vline(xintercept = as.POSIXct("2017-09-25")) + 
+  geom_vline(xintercept = as.POSIXct(predDate)) + 
+  geom_point(data = plotPollData, aes(x = time, y = proportion, group = party))
+```
+
+##Troubleshooting
+
+##Outlook
