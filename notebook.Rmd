@@ -25,7 +25,7 @@ First, we set a prediction date, which is the 25th of march 2017, exactly six mo
 predDate <- "2017-03-25"
 ```
 
-The poll data for the german election, the "Bundestagswahl" is scraped from the wep-page wahlrecht.de.
+The poll data for the german election, the "Bundestagswahl" is scraped from the web page wahlrecht.de.
 ```{r get poll data, warning=FALSE, echo = TRUE, message=FALSE}
 require('dplyr')
 require('tidyr')
@@ -49,9 +49,17 @@ knitr::kable(Elections)
 
 At the latest since the great attention, the election forecasts of the US presidential elections on fivethirtyeight.com by Nate Silver have received, data based election forecast are of great interest in the public as well as in academia. There were already some attempts using *STAN*, which rely on state-space models, where the state (voter's intention) is modeled by a random walk. This approach follows the 2005 paper of Simon Jackman (https://www.tandfonline.com/doi/abs/10.1080/10361140500302472) and was in predicting the australian election (cf. http://freerangestats.info/blog/2017/06/24/oz-polls-statespace), for example. While this method gives valuable insights and does a good job in removing bias from different pollsters, to our experience it does not really help in doing mid- or long term forecasts compared to very simple poll-averaging methods. The question here is, if we can do better than just take the current latent state or voter's intention as our forecast for the actual election that may be six months or one year in the future.
 
-Other election forecasts, such as the US-presidential forecasts by Nate Silver (https://fivethirtyeight.com/features/a-users-guide-to-fivethirtyeights-2016-general-election-forecast/) and multi-party forecasts for the UK-election (http://www.electionforecast.co.uk) or for the german federal electin (http://zweitstimme.org) state that there is some form of mean-reversion in polls or election results in the long term and incorporate this into their election forecast one way or another. In example http://www.electionforecast.co.uk states that: 
-
->The basic principle is that polling has some systematic biases, in particular a tendency to overstate changes from the previous election
+Other election forecasts, such as the US-presidential forecasts by Nate Silver (https://fivethirtyeight.com/features/a-users-guide-to-fivethirtyeights-2016-general-election-forecast/) and multi-party forecasts for the UK-election (http://www.electionforecast.co.uk) or for the german federal electin (http://zweitstimme.org) state that there is some form of mean-reversion in polls or election results in the long term and incorporate this into their election forecast one way or another. In example, http://www.electionforecast.co.uk states that: 
+```
+The basic principle is that polling has some systematic biases, in particular a tendency 
+to overstate changes from the previous election
+```
+FiveThirtyEight states that
+```
+Empirically, using more smoothing early in the race and less smoothing late in the race works best.
+In other words, the trend line starts out being quite conservative and 
+becomes more aggressive as Election Day approaches.
+```
 
 There is some discussion in a 1993 paper by Andrew Gelman and Gary King on this issue (https://gking.harvard.edu/files/abs/variable-abs.shtml). In a 2013 paper of Drew Linzer (https://votamatic.org/wp-content/uploads/2013/07/Linzer-JASA13.pdf) a mean reversion effect is incorporated for the US presidential elections, by implicitely assuming that on state level, the voter's share is going to return to it's long term mean. However, such a form of mean stationarity, even more in multi-party systems is unrealistic, as there are clear trends over time for different parties. Formerly successful parties can disappear entirely. Therefore, we propose some kind of mixture between a non-stationary random walk and a mean-reversing stationary process for the voter's share over time.
 
@@ -70,16 +78,18 @@ smoothProportions <- sapply(colnames(pollDataShock)[3:7],
 
 acfs <- rowMeans(apply(apply(smoothProportions, 2, diff), 2,
                        function(x) acf(x, 30, plot = FALSE)$acf))
-plot(acfs, type = "h", xlab = "week after shock", ylab = "autocorrelation")
+plot(acfs, type = "h", xlab = "week after shock", ylab = "autocorrelation",
+     main = "Aggregated empirical autocorrelation of differences")
 abline(h = 0)
 ```
 We can clearly see that there is a positive autocorrelation within the first weeks, that turns negative between 8 and 15 weeks after the initial shock. The latter interval can be seen as the period where the events gets out of the short-term memory of the people. A more clear picture of the mean-reversing nature of polls can be seen, when we integrate the autocorrelation function: 
 
 ```{r plot integrated acfs, warning=FALSE, echo = TRUE, message=FALSE}
-plot(cumsum(acfs) - 1, type = "l", xlab = "week after shock", ylab = "effect size")
-segments(x0 = 2.9, x1 = 31, y0 = 1.6, y1 = 1.6, lty = 3)
-text(x = 26, y = 1.25, "Long-term memory")
-text(x = 9, y = 1.9, "Short-term memory")
+plot(c(0,cumsum(acfs)), type = "l", xlab = "week after shock", ylab = "effect size",
+     main = "Effect of a shock (empirical)")
+segments(x0 = 3.9, x1 = 32, y0 = 2.6, y1 = 2.6, lty = 3)
+text(x = 26, y = 2.25, "Long-term memory")
+text(x = 10, y = 2.9, "Short-term memory")
 ```
 
 Another peculiarity in elections over time is the effect that government party lose voter's share, whereas opposition partys tend to gain share. For the german federal elections between 1998 and 2017, the government party lost share in 10 of 12 cases in the next election and in 15 of 20 cases the opposition parties were gaining share. The same observation can be made in neighbouring countries with a similar multi-party election system such as the Netherlands or Sweden. That be due to the effect that government parties rather face negative events, whereas opposition parties face positive events.
@@ -195,7 +205,7 @@ model {
 ```
 STAN doesn't support ragged arrays. Thus, for missing data, especially for the "AfD" party which didn't appear before the last third of the observation date interval, an extremely high standard deviation was chosen.
 
-## Prepare Data
+## Data preparation
 
 Before we compile and sample from the model, the poll and election data is binded together into a single data frame. We also form a dummy matrix of the pollsters ("IMatrix"), a missing matrix ("Missing") and indicators whether a certain observation of the combined data is an election ("electionIndikator") or the week after election ("electionIndikator2"). Additionally we have to match the weekly time sequence of the underlying state (voter's share) with the time of the actual polls ("matchedDates") and a matrix that assigns the government/opposition state for each party and point in time ("govMatrix").
 ```{r prepare data, warning=FALSE, echo = TRUE, message=FALSE}
@@ -276,12 +286,13 @@ govMatrix <- t(govMatrix)
 #                           electionIndikator2 = electionIndikator2),
 #               iter= 700, warmup = 600, chains = 4, cores = 4, seed = 124567,
 #               control = list(max_treedepth = 17, adapt_delta = 0.9))
-
+# samples <- extract(f)
 load("model_results/Model_2017_03_25.RData")
 ```
 
 ## Results
-### Visualization
+### Interpretation and visualization of model results
+#### Prediction six months prior election
 Six months before election, the social democratic party ("SPD") experienced a large increase (from slightly over 20\% to more than 30\%  in the polls) in voter's sharedue to a hype of the shortly announced chancellor candidate Martin Schulz. From the picture below, we can clearly see a mean-reversing trend until election date for the "SPD" (in red):
 ```{r modelling, warning=FALSE, echo = TRUE, message=FALSE}
 plotData <- lapply(1:NParties, function(x){
@@ -314,7 +325,6 @@ ggplot(data = plotData, aes(x = time, y = estimate, group = party,
   geom_point(data = plotPollData, aes(x = time, y = proportion, group = party))
 ```
 
-### Assessing predictive performance
 To assess the predictive performance, we evaluate the prediction with the RMSE ("Root Mean Square Error"). As competitors or comparison we use the most recent poll as well as the average of the most recent poll of each pollster:
 ```{r performance, warning=FALSE, echo = TRUE, message=FALSE}
 predElection <- samples$y[,,which(timeSeq == 
@@ -353,17 +363,138 @@ sqrt(mean((predAvgRecent - unlist(Elections %>% filter(Year == 2017) %>%
 
 We can see, that --at least at this point in time, six months before election-- our model estimates beat the pollsters by a fairly large amount, a 26\% lower RMSE than the average of the recent predictions.
 
-Now, we evaluate the performance on a monthly basis from 12 months before election until the election week:
+#### Prediction three months prior election
+Now, we have a look at a second prediction date, the 25th of June, 2017 -- 3 months before election:
+```{r three months prior election, warning=FALSE, echo = TRUE, message=FALSE}
+predDate <- "2017-06-25"
+pollData <- getPollData(predDate) %>% arrange(desc(Datum))
+Elections <- read.csv2("data/Elections.csv", encoding = 'UTF-8')
+Elections$Datum <- as.Date(Elections$Datum)
+source('R/preparePollData.R', encoding = 'UTF-8')
+data <- preparePollData(pollData, Elections, predDate)
+# mpModel <- stan_model(file = "stan_models/lsModelUni.stan")
+# f <- sampling(mpModel,
+#               data = data,
+#               iter= 700, warmup = 600, chains = 4, cores = 4, seed = 124567,
+#               control = list(max_treedepth = 17, adapt_delta = 0.9))
+# samples <- extract(f)
+load("model_results/Model_2017_06_25.RData")
+source('R/plotElectionData.R', encoding = 'UTF-8')
+plotElectionData(samples, data, predDate)
+```
+
+In the motivation section, we simulate the effect of a single shock in time course with the model and the estimated parameters. We instantly see, that the graph is very similar to the empirical evidence on the model-free smoothed data in the motivation section. We have a maximum effect around 7-8 weeks after the initial shock, that partially wears off in the following weeks. W 
+```{r long short term, warning=FALSE, echo = TRUE, message=FALSE}
+### effect of single shock of size 1
+adds <- 0
+substract <- 0
+weeks <- 30
+y <- rep(0,weeks)
+epsilon <- c(0, 1, rep(0,weeks-2))
+theta =  mean(samples$theta)
+theta2 = mean(samples$theta2)
+alpha = mean(samples$alpha)
+
+for(n in 2:weeks){
+  y[n]         = y[n-1]  + epsilon[n] + adds - substract;
+  adds = (adds + epsilon[n]) * theta2;
+  substract = substract * theta + (alpha * (adds + epsilon[n])) * (1 - theta);
+}
+
+plot(y, type = "l", main = "Effect of a single shock (model based simulation)",
+     xlab = "week after shock", ylab = "effect size")
+segments(x0 = 3.5, x1 = 31, y0 = 1.8, y1 = 1.8, lty = 3)
+text(x = 26, y = 1.25, "Long-term memory")
+text(x = 9, y = 1.9, "Short-term memory")
+```
+We can also do a full simulation and compute the autocorrelation function. Again, the result is very similar to results on the smoothed poll data in the motivation section. This is a quite strong evidence, that 
+
+```{r model sim acf, warning=FALSE, echo = TRUE, message=FALSE}
+
+#Complete simulation; compute ACF
+epsilon <- rt(1000000, df = 5)
+y <- rep(0,1000000)
+for(n in 2:1000000){
+  y[n]         = y[n-1]  + epsilon[n] + adds - substract;
+  adds = (adds + epsilon[n]) * theta2;
+  substract = substract * theta + (alpha * (adds + epsilon[n])) * (1 - theta);
+}
+acf(diff(y), 30, xlab = "week after shock", ylab = "autocorrelation",
+    main = "Model based autocorrelation")
+```
+In the meantime, the uplift in voter's share for the "SPD" has vanished almost completely and the largest party, "CDU/CSU" (the party of chancellor Angela Merkel) gained some share. Our model predicts a mean-reversing trend for the "CDU/CSU" until election (i.e. a decrease in voter's share), but also for the AfD, where the model predicts an increase in voter's share. It becomes also obvious that the AfD has much larger credible intervals compared to the other three smaller parties on election day. This might be due to the fact, that this party was founded only some years ago and is less stable and therefore experiences larger swings in voter's share.
+
+#### Prediction the day prior election
+At last, we have a closer look to the day before election:
+```{r day prior election, warning=FALSE, echo = TRUE, message=FALSE}
+predDate <- "2017-09-23"
+pollData <- getPollData(predDate) %>% arrange(desc(Datum))
+Elections <- read.csv2("data/Elections.csv", encoding = 'UTF-8')
+Elections$Datum <- as.Date(Elections$Datum)
+source('R/preparePollData.R', encoding = 'UTF-8')
+data <- preparePollData(pollData, Elections, predDate)
+# mpModel <- stan_model(file = "stan_models/lsModelUni.stan")
+# f <- sampling(mpModel,
+#               data = data,
+#               iter= 700, warmup = 600, chains = 4, cores = 4, seed = 124567,
+#               control = list(max_treedepth = 17, adapt_delta = 0.9))
+# samples <- extract(f)
+load("model_results/Model_2017_09_23.RData")
+plotElectionData(samples, data, predDate, end = "2017-12-31")
+```
+The "CDU/CSU" lost some voter share, while the AfD gained quite a bit, confirming the estimated trend from the model above. 
+
+We can also have a look at the effect of government and opposition status as a party. As presumed being in opposition rather has a positive influence (in terms of expected value) on the shock, while being in government has a negative effect:
+```{r government effect, warning=FALSE, echo = TRUE, message=FALSE}
+goData <- data.frame(estimate = c(samples$opposition, samples$government),
+           status = rep(c("opposition", "government"), each = length(samples$government)))
+
+ggplot(goData, aes(estimate, colour= status, fill = status)) + geom_density(alpha = 0.3)
+```
+The model allows us furthermore to look at the "housebias" , i.e. bias of a pollster of a specific party or the polling uncertainty. In the example of the "Allensbach" pollster, we see that this pollster strongly favours the "FDP" and has a negative bias on the "AfD" party:
+```{r house bias, warning=FALSE, echo = TRUE, message=FALSE}
+biasAllensbach <- samples$housebias[,,1]
+colnames(biasAllensbach) <- partyNames
+boxplot(biasAllensbach, xlab = "Party", ylab = "Bias (logit-scale)",
+        main = "House bias of pollster 'Allensbach'")
+```
+
+### Assessing predictive performance
+Now, we evaluate the performance on a monthly basis from 12 months before election until the election in 2017. We have four competitors:
+
+1. The average on party level of the most recent poll of all seven pollsters ("Average")
+2. The most recent poll ("Recent")
+3. The best pollster for the 2017 election, which is the pollster "INSA" ("Best")
+4. The best pollster for each time point ("Min")
+
+Please note that competitors 3. and 4. kind of have an unfair hindsight advantage as they are not available until we know the election results. The Root mean square errors averaged over all parties is stored in an excel file:
+```{r performance eval, warning=FALSE, echo = TRUE, message=FALSE}
+library("xlsx")
+predictivePerformance <- read.xlsx("model_results/PredictivePerformance.xlsx",
+                                   14, header=TRUE)
+knitr::kable(predictivePerformance)
+
+longData <- gather(predictivePerformance, "Method", "RMSE", -Date)
+ggplot(longData %>% filter(Method %in% c("Bayes", "Average", "Recent")),
+       aes(y=RMSE, x= Date, colour = Method)) + geom_line() + 
+  ggtitle("Performance comparison")
+
+ggplot(longData %>% filter(Method %in% c("Bayes", "Min", "Best")),
+       aes(y=RMSE, x= Date, colour = Method)) + geom_line() + 
+  ggtitle("Performance comparison vs. hindsight measures")
+
+#average over all time points
+round(colMeans(predictivePerformance[,-1]), 3)
+```
+The proposed Bayesian long-short term memory state-space model was able to beat a poll average by 15% in average over the year prior election and almost 20% compared to the most recent election. It even turned out to beat the best pollster for this particular election, which is only available in hindsight and is on par with best pollster for each point in time, which is a remarkable result. First test results showed, that these results are confirmed when applying the model on the previous 2013 election.
+
 
 ## Troubleshooting
-The iterations exceeds maximum tree size, for tree_depth <18 (but results are ok for tree_depth larger than 15). Fortunately, there are no divergent samples for adapt_stepsize value of 0.9. The models have been running with rather low sample size and 
+The model iterations exceeds maximum tree size, for tree_depth <18 (but results are ok for tree_depth larger than 15). As each additional tree_depth increases the computation time about two_fold, this leads to very slow computation. Fortunately, there are no divergent samples for adapt_stepsize value of 0.9. The models have been running with rather low sample size due to time constraints, a bit longer sampling periods are desirable.
 
 ## Outlook
-### Model speed up 
-The model is quite slow and about 1 week to compute
-  - Use map_rect on party level to speed up computation
-  - Faster computation with future *STAN* versions, model could benefit from faster indexin in *STAN* 2.20
-  - Potentially re-parameterize model
+### Performance improvement 
+The model is quite slow and about 1 week to compute, the usage map_rect on party level might speed up computation considerably. Also faster computation with future *STAN* versions is conceivable as the model could benefit from faster indexing in *STAN* 2.20, for example. We could also try to re-parameterize model or find better priors to speed up computation, however the current parametrization was the best we could find after trying some different ones.
 
-#### Model extensions
+### Model extensions
 Instead of independent shifts and common pollster errors, i.e. independent t-distributions, multivariate t-distributions accounting for correlated shocks and poll errors could be employed. Also further improvements by introducing a mid-term memory parameter are possible. Both extensions can be found in the stan_models directory. However, these are even slower and the predictive performance as not been studied in detail.
