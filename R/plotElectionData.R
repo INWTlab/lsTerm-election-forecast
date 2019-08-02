@@ -27,5 +27,5 @@ plotElectionData <- function(samples, data, predDate,
            label="prediction date", angle = 25, size = 2) +
   annotate(geom = "text", x=as.POSIXct(electionDate),
            y=0, label="election date", angle = 25, size = 2)  +
-  geom_point(data = plotPollData, aes(x = time, y = proportion, group = party))
+  geom_point(data = plotPollData, aes(x = time, y = proportion, group = party), alpha = 0.3)
 }

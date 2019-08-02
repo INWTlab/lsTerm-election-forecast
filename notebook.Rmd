@@ -112,13 +112,13 @@ knitr::kable(head(pollData %>% filter(Datum < "2005-09-18")))
 knitr::kable(Elections %>% filter(Year == 2005))
 ```
 
-For the largest party, the CDU/CSU, all polls are much too high, exceeding the real outcome between 5 and 7 percentage points. Such large changes virtually never happen within one week, such that in this and many other case, one can strongly presume that there is a common bias for all pollsters. This kind of bias will be adjusted for in the poll's post-processing, such that it will be approx. zero just after the election.
+For the largest party, the CDU/CSU, all polls give a much too high estimate, exceeding the real outcome between 5 and 7 percentage points. Such large changes virtually never happen within one week, such that in this and many other case, one can strongly presume that there is a common bias for all pollsters. This kind of bias will be adjusted for in the pollster's post-processing, such that it will be approx. zero just after election.
 
 For the third source, one may presume that the sample size ("Befragte" in the poll data) is an important or even the only factor for determining uncertainty of a poll, but due to our experience the effect is negligable, as the pollsters have their own correction methods such that the actual poll outcome and the published polls differ substantially.
 
 ## Model
-Let $y_{party, t}$ be the true voter's share for a specific party, $pt$ for a certain time point $t$, if an election would be held, whereby $t$ is indexed on a weekly basis. Except for election dates, we cannot measure the voter's share directly, but have to rely on poll data. The poll data $poll_{pt, t, pll}$ for a party $pt$, time point $t$ and pollster $pll$ is published in irregular intervals by different institutes or pollsters. Beforehand, the poll data and the election voter's share were transformed on the logit scale:
-
+To model the voter's share over time we implemented a -- what we call it -- long-short term memory state space model in *STAN*. It incorporates a parameterized long- and short-term memory structure based on weekly events or shocks, incorporates the party status (government or opposition), accounts for different sources of uncertainty (future events,common pollster error, pollster-party-housebias, polling uncertainty) and heavy-tail errors.
+Let $y_{party, t}$ be the true voter's share for a specific party, $pt$ for a certain time point $t$, if an election would be held, whereby $t$ is indexed on a weekly basis. Except for election dates, we cannot measure the voter's share directly, but have to rely on poll data. The poll data $poll_{pt, t, pll}$ for a party $pt$, time point $t$ and pollster $pll$ is published in irregular intervals by different institutes or pollsters. Beforehand, the poll data and the election voter's share were transformed on the logit scale to guarantee estimates in the (0, 1) interval after re-transformation and to provide variance regulation:
 
 $$logit(poll_{pt, t, pll}) \sim N(y_{pt, t} + bias_{pt,pll} + \epsilon_{\text{pollError}_{pt, t}}\text{ , } \sigma_{pt,pll} + 1E-4)$$
 The pollsters housebias and poll error are coming from a common distribution:
@@ -293,7 +293,7 @@ load("model_results/Model_2017_03_25.RData")
 ## Results
 ### Interpretation and visualization of model results
 #### Prediction six months prior election
-Six months before election, the social democratic party ("SPD") experienced a large increase (from slightly over 20\% to more than 30\%  in the polls) in voter's sharedue to a hype of the shortly announced chancellor candidate Martin Schulz. From the picture below, we can clearly see a mean-reversing trend until election date for the "SPD" (in red):
+Six months before election, the social democratic party ("SPD") experienced a large increase (from slightly over 20\% to more than 30\%  in the polls) in voter's sharedue to a hype of the shortly announced chancellor candidate Martin Schulz. From the picture below,, we can clearly see a mean-reversing trend until election date for the "SPD" (in red). The model estimates of the voter's share for each party are presented as solid lines with additional 95% credible bands from January 1st 2016 until the date of election on September 24th 2017. The date of prediction (vertical line) and the poll results (points) are also added:
 ```{r modelling, warning=FALSE, echo = TRUE, message=FALSE}
 plotData <- lapply(1:NParties, function(x){
   data.frame(estimate = samples$y[,x,] %>% logistic %>% colMeans,
@@ -318,11 +318,11 @@ ggplot(data = plotData, aes(x = time, y = estimate, group = party,
   xlim(as.POSIXct(c("2016-01-01", "2017-09-30"))) + ylim(0,0.42) + 
   geom_vline(xintercept = as.POSIXct("2017-09-25")) + 
   geom_vline(xintercept = as.POSIXct(predDate)) + 
-  annotate(geom = "text", x=as.POSIXct(predDate), y=0,
+  annotate(geom = "text", x=as.POSIXct(predDate), y=0.02,
            label="prediction date", angle = 25, size = 2) +
   annotate(geom = "text", x=as.POSIXct("2017-09-25"),
            y=0, label="election date", angle = 25, size = 2)  +
-  geom_point(data = plotPollData, aes(x = time, y = proportion, group = party))
+  geom_point(data = plotPollData, aes(x = time, y = proportion, group = party), alpha = 0.3)
 ```
 
 To assess the predictive performance, we evaluate the prediction with the RMSE ("Root Mean Square Error"). As competitors or comparison we use the most recent poll as well as the average of the most recent poll of each pollster:
@@ -361,7 +361,7 @@ sqrt(mean((predAvgRecent - unlist(Elections %>% filter(Year == 2017) %>%
 
 ```
 
-We can see, that --at least at this point in time, six months before election-- our model estimates beat the pollsters by a fairly large amount, a 26\% lower RMSE than the average of the recent predictions.
+We can see, that --at least at this point in time, six months before election -- our model estimates beat the pollsters by a fairly large amount, a 26\% lower RMSE than the average of the recent predictions.
 
 #### Prediction three months prior election
 Now, we have a look at a second prediction date, the 25th of June, 2017 -- 3 months before election:
@@ -460,7 +460,7 @@ boxplot(biasAllensbach, xlab = "Party", ylab = "Bias (logit-scale)",
 ```
 
 ### Assessing predictive performance
-Now, we evaluate the performance on a monthly basis from 12 months before election until the election in 2017. We have four competitors:
+To assess the performance of the proposed model, we have computed models with on a monthly basis from 12 months before election until the election in 2017. Now, we evaluate the (out-of-sample) performance. We have four competitors:
 
 1. The average on party level of the most recent poll of all seven pollsters ("Average")
 2. The most recent poll ("Recent")
