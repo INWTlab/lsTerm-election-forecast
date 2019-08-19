@@ -105,7 +105,7 @@ Central to any election forecast is the realistic assessment of the forecast err
 
 The second point can be further split in three sources: 
 
-1. The common bias of all pollsters for a specific party
+1. The common bias of all pollsters for a specific party and and time point
 2. The (house) bias of a specific pollster for a specific party
 3. The polling uncertainty of a specific pollster for a specific party
 
@@ -141,11 +141,11 @@ $$\epsilon_{\text{pollError}_{pt, t}} = 0.98 \cdot \epsilon_{\text{pollError}_{p
 The shifts in the common bias of the pollsters for a specific party follow a t-distribution with five degrees of freedom and a standard deviation $\sigma_{\text{pollbias}}$ that is different for each party $pt$:
 $$\epsilon_{\text{polls}_{pt, t}} \sim t(0, \sigma_{\text{pollbias}_{pt}}, df = 5)$$
 
-The true vote share $y_{pt, t}$ws a random walk (with drift), but two additional terms 𝜐_(𝑝𝑡,𝑡) and 𝜂_(𝑝𝑡,𝑡), the short and long-term memory effects:
+The true vote share $y_{pt, t}$ follows a random walk (with drift), but two additional terms $\nu_{pt, t}$ and $\eta_{pt, t}$, the short and long-term memory effects:
 
 $$y_{pt, t} = y_{pt, t-1} + \epsilon_{pt, t} + \nu_{pt, t} - \eta_{pt, t}$$
 
-The shocks in vote share follow a t-distribut $\epsilon_{pt, t}$ion with five degrees of freedom. The expectation $\mu_{pt, t}$ depends on the current state, i.e. state of being in government or opposition for the party, whereas the standard deviation $\sigma_{\text{shift}_{pt}}$ is different for each party $pt$:
+The shocks in vote share follow $\epsilon_{pt, t}$ a t-distribution with five degrees of freedom. The expectation $\mu_{pt, t}$ depends on the current state, i.e. state of being in government or opposition for the party, whereas the standard deviation $\sigma_{\text{shift}_{pt}}$ is different for each party $pt$:
 $$\epsilon_{pt, t} \sim t(\mu_{pt, t}, \sigma_{\text{shift}_{pt}}, df = 5)$$
 As explained in the previous section, the expectation of the weekly shift in vote share might be influenced by whether a party is part of the government or the opposition.
 $$\mu_{pt, t} = opposition_{pt,t} + government_{pt,t}$$
@@ -511,7 +511,7 @@ ggplot(longData %>% filter(Method %in% c("Bayes", "Min", "Best")),
 #average over all time points
 round(colMeans(predictivePerformance[,-1]), 3)
 ```
-The proposed Bayesian long-short term memory state-space model was able to beat a poll average by 15% on average over the year prior to election, and by almost 20% compared to the most recent election. It even turned out to beat the best pollster for this particular election -- which is only available in hindsight -- and is on par with best pollster for each point in time, a remarkable result. First test results show that these results are confirmed when applying the model on the previous 2013 election.
+The proposed Bayesian long-short term memory state-space model was able to beat a poll average by 15% on average over the year prior to election, and by almost 20% compared to the most recent poll. It even turned out to beat the best pollster for this particular election -- which is only available in hindsight -- and is on par with best pollster for each point in time, a remarkable result. First test results show that these results are confirmed when applying the model on the previous 2013 election.
 \bigskip
 
 ## Troubleshooting
