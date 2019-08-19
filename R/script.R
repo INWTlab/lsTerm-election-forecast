@@ -162,12 +162,12 @@ f <- sampling(r, iter= 733, warmup = 400, chains = 3, cores = 3, seed = 124567,
 save(f, file = "Test251016.RData")
 
 fx <- rstan::extract(f)
-samples <- 667:999
+samples <- 1:333
 #Veranschaulichung
 par(mfrow = c(3,2))
 for(party in 1:NParties){
   plot(fx$y[samples,party,] %>% logistic %>% colMeans ~ epst, type = "l",
-       ylim = c(0.03, 0.47), main = rownames(poll)[party], xlim=c(2000,2500))
+       ylim = c(0.03, 0.47), main = rownames(pollData)[party], xlim=c(2000,2500))
   lines((fx$y[samples,party,] + fx$pollError[samples,party,]) %>% logistic %>% colMeans ~ epst, col ="orange")
   abline(v=BTWDates, lwd=1)
   lines(apply(fx$y[samples,party,] %>% logistic, 2, quantile, 0.025) ~ epst, lty = 2, col ="red")

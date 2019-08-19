@@ -96,7 +96,7 @@ text(x = 26, y = 2.25, "Long-term memory")
 text(x = 10, y = 2.9, "Short-term memory")
 ```
 
-Another peculiarity of elections over time is the effect of government parties generally losing vote share, while opposition parties tend to gain voters. For the German federal elections between 1998 and 2017, the government party lost vote share in 10 of 12 cases in the following election, and the opposition parties gained vote share in 15 of 20 cases. The same observation can be seen in neighboring countries with similar multi-party election systems such as the Netherlands or Sweden. This may be influenced by the fact that government parties are more likely to face negative events, whereas opposition parties experience more positive events.
+Another peculiarity of elections over time is the effect of government parties generally losing vote share, while opposition parties tend to gain voters. For the German federal elections between 1994 and 2017, the government party lost vote share in 10 of 12 cases in the following election, and the opposition parties gained vote share in 15 of 20 cases. The same observation can be seen in neighboring countries with similar multi-party election systems such as the Netherlands or Sweden. This may be influenced by the fact that government parties are more likely to face negative events, whereas opposition parties experience more positive events.
 
 Central to any election forecast is the realistic assessment of the forecast error. We expect to see two different sources of uncertainty in the forecast:
 
@@ -141,9 +141,11 @@ $$\epsilon_{\text{pollError}_{pt, t}} = 0.98 \cdot \epsilon_{\text{pollError}_{p
 The shifts in the common bias of the pollsters for a specific party follow a t-distribution with five degrees of freedom and a standard deviation $\sigma_{\text{pollbias}}$ that is different for each party $pt$:
 $$\epsilon_{\text{polls}_{pt, t}} \sim t(0, \sigma_{\text{pollbias}_{pt}}, df = 5)$$
 
+The true vote share $y_{pt, t}$ws a random walk (with drift), but two additional terms 𝜐_(𝑝𝑡,𝑡) and 𝜂_(𝑝𝑡,𝑡), the short and long-term memory effects:
+
 $$y_{pt, t} = y_{pt, t-1} + \epsilon_{pt, t} + \nu_{pt, t} - \eta_{pt, t}$$
 
-The shocks in vote share follow a t-distribution with five degrees of freedom. The expectation $\mu_{pt, t}$ depends on the current state, i.e. state of being in government or opposition for the party, whereas the standard deviation $\sigma_{\text{shift}_{pt}}$ is different for each party $pt$:
+The shocks in vote share follow a t-distribut $\epsilon_{pt, t}$ion with five degrees of freedom. The expectation $\mu_{pt, t}$ depends on the current state, i.e. state of being in government or opposition for the party, whereas the standard deviation $\sigma_{\text{shift}_{pt}}$ is different for each party $pt$:
 $$\epsilon_{pt, t} \sim t(\mu_{pt, t}, \sigma_{\text{shift}_{pt}}, df = 5)$$
 As explained in the previous section, the expectation of the weekly shift in vote share might be influenced by whether a party is part of the government or the opposition.
 $$\mu_{pt, t} = opposition_{pt,t} + government_{pt,t}$$
