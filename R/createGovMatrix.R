@@ -39,6 +39,31 @@ createGovMatrix <- function(partyNames, YTOTAL, Elections, timeSeq){
   return(govMatrix)
 }
 
+createGovMatrixSweden <- function(partyNames, YTOTAL, Elections, timeSeq){
+  govMatrix <- matrix(0, ncol = length(partyNames),
+                      nrow = YTOTAL,
+                      dimnames = list(c(), partyNames))
+  
+  ElectionWeeklyDates <- ceiling(as.numeric(Elections$Datum)/7)
+  
+  govMatrix[, "S"][timeSeq <= ElectionWeeklyDates[Elections$Year == 2002]] <- 1
+  
+  govMatrix[, "M"][timeSeq > ElectionWeeklyDates[Elections$Year == 2006] & 
+                     timeSeq <= ElectionWeeklyDates[Elections$Year == 2014]] <- 1
+  govMatrix[, "C"][timeSeq > ElectionWeeklyDates[Elections$Year == 2006] & 
+                     timeSeq <= ElectionWeeklyDates[Elections$Year == 2014]] <- 1
+  govMatrix[, "L"][timeSeq > ElectionWeeklyDates[Elections$Year == 2006] & 
+                     timeSeq <= ElectionWeeklyDates[Elections$Year == 2014]] <- 1
+  govMatrix[, "KD"][timeSeq > ElectionWeeklyDates[Elections$Year == 2006] & 
+                      timeSeq <= ElectionWeeklyDates[Elections$Year == 2014]] <- 1
+  
+  govMatrix[, "S"][timeSeq > ElectionWeeklyDates[Elections$Year == 2014]] <- 1
+  govMatrix[, "MP"][timeSeq > ElectionWeeklyDates[Elections$Year == 2014]] <- 1
+  
+  return(govMatrix)
+}
+
 logistic <- function(x) {
   exp(x) / (exp(x) + 1)
 }
+
