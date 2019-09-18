@@ -1,4 +1,5 @@
-require('dplyr')
+devtools::install_github("MansMeg/SwedishPolls", subdir = "RPackage")
+ require('dplyr')
 require('tidyr')
 require('xml2')
 require('rvest')
@@ -9,7 +10,6 @@ require('zoo')
 require('rstan')
 predDate <- "2018-06-07"
 
-devtools::install_github("MansMeg/SwedishPolls", subdir = "RPackage")
 pollData <- SwedishPolls::get_polls()
 pollData <- pollData[!is.na(pollData$PublDate), ]
 pollData$Institut <- pollData$house
@@ -78,14 +78,7 @@ electionIndikator[match(allData[rowSums(IMatrix) == 0, "Datum"], timeSeq) + 1] <
 electionIndikator2 <- rep(1, YTOTAL)
 electionIndikator2[match(allData[rowSums(IMatrix) == 0, "Datum"], timeSeq)] <- 0
 
-electionNumber <- rep(1, length(electionIndikator2))
-for(i in 2:length(electionIndikator2)){
-  electionNumber[i] <- electionNumber[i-1]
-  if(electionIndikator2[i] == 0){
-    electionNumber[i] <- electionNumber[i] + 1  
-  }
-}
-NElections <- max(electionNumber)
+NElections <- sum(-1 * electionIndikator2 + 1) + 1
 
 electionIndikator3 <- matrix(0, length(electionIndikator), NElections)
 electionIndikator3[1,1] <- 0
