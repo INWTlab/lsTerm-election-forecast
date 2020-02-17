@@ -151,21 +151,21 @@ getPollData <- function(dateMax = Sys.Date()) {
   wahlProg$Datum %<>% as.Date(wahlProg$Datum, format = "%d.%m.%Y")
   FW <- wahlProg$Institut %>% table %>% .[4] %>% names
   
-  wahlProg[is.na(wahlProg$Datum) == TRUE &
-             wahlProg$Institut == FW, ]$Datum <-
-    rev(c(
-      seq(as.Date("1994/11/1"), as.Date("1995/07/1"), by = "month"),
-      seq(as.Date("1995/09/1"), as.Date("1996/06/1"), by = "month"),
-      seq(as.Date("1996/08/1"), as.Date("1997/06/1"), by = "month"),
-      seq(as.Date("1997/08/1"), as.Date("1997/12/1"), by = "month")
-    ))
-  
-  wahlProg[is.na(wahlProg$Datum) == TRUE &
-             wahlProg$Institut == 'GMS', ]$Datum <- as.Date('2002-12-01')
-  wahlProg[is.na(wahlProg$Datum) == TRUE &
-             wahlProg$Institut == 'Emnid' &
-             wahlProg$`CDU/CSU` == 0.35 &
-             wahlProg$SPD == 0.32 , ]$Datum <- as.Date('2005-12-01')
+  # wahlProg[is.na(wahlProg$Datum) == TRUE &
+  #            wahlProg$Institut == FW, ]$Datum <-
+  #   rev(c(
+  #     seq(as.Date("1994/11/1"), as.Date("1995/07/1"), by = "month"),
+  #     seq(as.Date("1995/09/1"), as.Date("1996/06/1"), by = "month"),
+  #     seq(as.Date("1996/08/1"), as.Date("1997/06/1"), by = "month"),
+  #     seq(as.Date("1997/08/1"), as.Date("1997/12/1"), by = "month")
+  #   ))
+  # 
+  # wahlProg[is.na(wahlProg$Datum) == TRUE &
+  #            wahlProg$Institut == 'GMS', ]$Datum <- as.Date('2002-12-01')
+  # wahlProg[is.na(wahlProg$Datum) == TRUE &
+  #            wahlProg$Institut == 'Emnid' &
+  #            wahlProg$`CDU/CSU` == 0.35 &
+  #            wahlProg$SPD == 0.32 , ]$Datum <- as.Date('2005-12-01')
   
   # add pds to linke and sum irrelevant parties up to 'Sonstige'
   wahlProg %<>%
