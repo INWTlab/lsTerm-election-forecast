@@ -172,8 +172,7 @@ getPollData <- function(dateMax = Sys.Date()) {
     mutate(
       LINKE = pmax(LINKE, Linke.PDS, PDS, na.rm = TRUE),
       Linke.PDS = 0,
-      PDS = 0,
-      Sonstige = rowSums(.[c(12:15, 17, 21:22)], na.rm = T)
+      PDS = 0
     )
   
   # select relevant variables
@@ -186,7 +185,6 @@ getPollData <- function(dateMax = Sys.Date()) {
                   FDP,
                   LINKE,
                   AfD,
-                  Sonstige,
                   Befragte)
   wahlProg %<>% filter(!is.na(Datum), !is.na(Institut), !is.na(SPD))
   
