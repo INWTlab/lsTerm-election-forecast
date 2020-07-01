@@ -1,4 +1,3 @@
-devtools::install_github("MansMeg/SwedishPolls", subdir = "RPackage")
 require('dplyr')
 require('tidyr')
 require('xml2')
@@ -11,27 +10,17 @@ require('rstan')
 #require('cmdstanr')
 source('R/getPollData.R', encoding = 'UTF-8')
 
-predDate <- "2018-03-07"
+predDate <- "2017-06-25"
 minDate <- "1998-01-01"
-  
-pollData <- SwedishPolls::get_polls()
-pollData <- pollData[!is.na(pollData$PublDate), ]
-pollData$Institut <- pollData$house
-pollData$Datum <- pollData$PublDate
-pollData  <- pollData[pollData$Datum < predDate, ]
-pollData[, 3:11] <- pollData[, 3:11] / 100
-
-pollData %>% filter(Datum > minDate)
-
-Elections <- read.csv2("data/ElectionSweden.csv", encoding = 'UTF-8')
+pollData <- getPollData(predDate) %>% arrange(desc(Datum)) %>% filter(Datum > minDate)
+Elections <- read.csv2("data/Elections.csv", encoding = 'UTF-8')
 Elections$Datum <- as.Date(Elections$Datum)
 Elections <- Elections %>% filter(Datum > minDate)
 
 # combine election and polling data
-partyNames <- c("M", "L", "C", "KD", "S", "V", "MP", "SD", "FI")
+partyNames <- c("CDU/CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AfD")
 colnames(Elections)[1:length(partyNames)] <- partyNames
 electionsTemp <- Elections[Elections$Datum < predDate, c("Institut", "Datum", partyNames)]
-
 pollsTemp <- pollData[,c("Institut", "Datum", partyNames)]
 names(electionsTemp) <- names(pollsTemp)
 
@@ -39,7 +28,7 @@ electionsTemp$Election = TRUE
 pollsTemp$Election = FALSE
 
 allData <- rbind(pollsTemp, electionsTemp)
-allData <- allData %>% filter(!is.na(Datum)) %>% arrange(Datum) %>% as.data.frame()
+allData <- allData %>% filter(!is.na(Datum)) %>% arrange(Datum)
 
 #omit polls in same week after elections (model does not work for them)
 allData[,2] <- floor(as.numeric(difftime(allData[, "Datum"], as.Date("1970-01-04"), units = "weeks")))
@@ -85,7 +74,7 @@ pos <- matrix(c(sapply(unique(allData2$party), function(x) which(allData2$party 
 
 #create matrix of government parties
 source('R/createGovMatrix.R', encoding = 'UTF-8')
-govMatrix <- createGovMatrixSweden(partyNames, YTOTAL, Elections, timeSeq)
+govMatrix <- createGovMatrix(partyNames, YTOTAL, Elections, timeSeq)
 
 #indicator of weeks of state-space time sequence with election week
 #indicator of weeks of state-space time sequence with election and week after election
@@ -146,11 +135,10 @@ f <- sampling(mpModel, data = list(NTOTAL = NTOTAL,
               init_r = 0.1,
               pars = c("y", "alpha", "theta", "theta2", "phi", "opposition",
                        "government", "epsilon", "mu","tau", "tau2"),
-              iter= 500, warmup = 300, chains = 4, cores = 4, seed = 124567,
+              iter= 800, warmup = 400, chains = 4, cores = 4, seed = 124567,
               control = list(max_treedepth = 14, adapt_delta = 0.8))
 
 samples <- rstan::extract(f)
-
 
 plotData <- lapply(1:NParties, function(x){
   data.frame(estimate = samples$y[,x,] %>% logistic %>% colMeans,
@@ -167,19 +155,17 @@ plotPollData <- cbind(plotPollData,
 
 plotPollData <- plotPollData %>% as_tibble %>% gather(key = "party",
                                                       value = "proportion", -time)
-
-partyColors <- c("dodgerblue4", "black", "yellow", "green", "purple", "red", "orange", "darkblue", "violet", "grey")
-
+partyColors <- c("dodgerblue4", "black", "yellow", "green", "purple", "red")
 
 nexElectionDate <- as.character(Elections$Datum[(which(Elections$Datum > predDate))[1]])
-  
+
 
 g <- ggplot(data = plotData, aes(x = time, y = estimate, group = party,
                                  colour = party)) + geom_line() + 
   geom_ribbon(aes(ymin = lower, ymax = upper,
                   fill = party),alpha = 0.3, colour = NA, show.legend = FALSE) + 
   scale_color_manual(values=partyColors) +   scale_fill_manual(values=partyColors) +
-  xlim(as.POSIXct(c("1998-01-01", nexElectionDate))) + ylim(0,0.5) + 
+  xlim(as.POSIXct(c("2000-01-01", nexElectionDate))) + ylim(0,0.5) + 
   geom_vline(xintercept = as.POSIXct(nexElectionDate)) + 
   geom_vline(xintercept = as.POSIXct(predDate)) + 
   annotate(geom = "text", x=as.POSIXct(predDate), y=0.02,
@@ -188,17 +174,34 @@ g <- ggplot(data = plotData, aes(x = time, y = estimate, group = party,
            y=0, label="election date", angle = 25, size = 2)  +
   geom_point(data = plotPollData, aes(x = time, y = proportion, group = party), alpha = 0.3)
 
-
-#election predictions
+#g
 
 predElection <- samples$y[,,which(timeSeq == 
-                                    ceiling(as.numeric(difftime(as.Date(nexElectionDate),
-                                                                as.Date("1970-01-04"),
-                                                                units = "weeks"))))] %>%
-  logistic %>% colMeans %>% round(3)
+                                    floor(as.numeric(difftime(as.Date(nexElectionDate),
+                                                              as.Date("1970-01-04"),
+                                                              units = "weeks"))))] %>%
+  logistic %>% colMeans
 
 
-recentPolls <- pollsTemp %>% filter(Datum <= predDate, Datum >= (as.Date(predDate) - 30)) %>% 
+predElection
+par(mfrow = c(2,2))
+sapply(1:NParties,
+       function(x) (samples$y[,x,] %>% colMeans %>% diff %>% acf(plot = FALSE,32))$acf) %>% rowMeans %>% plot(type = "h")
+sapply(1:NParties,
+       function(x) (samples$y[,x,] %>% colMeans %>% diff %>% pacf(plot = FALSE,32))$acf) %>% rowMeans %>% plot(type = "h")
+
+sapply(1:NParties,
+       function(x) (samples$epsilon[,,x] %>% colMeans %>% acf(plot = FALSE,32))$acf) %>% rowMeans %>% plot(type = "h")
+sapply(1:NParties,
+       function(x) (samples$epsilon[,,x] %>% colMeans %>% pacf(plot = FALSE,32))$acf) %>% rowMeans %>% plot(type = "h")
+
+apply(samples$y[,,which(timeSeq == 
+                          floor(as.numeric(difftime(as.Date(nexElectionDate),
+                                                    as.Date("1970-01-04"),
+                                                    units = "weeks"))))] %>%
+        logistic, 2, quantile, c(0.025, 0.975))
+
+recentPolls <- pollsTemp %>% filter(Datum <= predDate, Datum >= (as.Date(predDate) - 14)) %>% 
   arrange(desc(Datum)) %>% group_by(Institut) %>% slice(1) %>%
   ungroup %>% arrange(desc(Datum))
 
@@ -208,11 +211,13 @@ recentPolls <- matrix(recentPolls[, partyNames] %>% t,
 recentPolls$Avg <- round(rowMeans(recentPolls, na.rm = TRUE),3)
 
 Results <- data.frame(partyNames = partyNames,
-                      electionResult = unlist(Elections[Elections$Datum == nexElectionDate, 1:length(partyNames)]),
+                      electionResult = unlist(Elections[Elections$Year == 2018, 1:length(partyNames)]),
                       prediction = round(predElection, 3),
                       recentPolls)
 
+
 #compare model and polls with actual results
 round(sapply(3:ncol(Results), function(x){
-  sqrt(mean((Results[-9,x] - Results[-9,"electionResult"]) ^ 2, na.rm  = TRUE))
-}), 4)
+  sqrt(mean((Results[,x] - Results[,"electionResult"]) ^ 2, na.rm  = TRUE))
+}), 3)
+
