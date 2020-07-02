@@ -103,8 +103,8 @@ getPollData <- function(dateMax = Sys.Date()) {
   }
   
   # now combine the elements of 'data' to one data.frame called 'wahlProg'
-  wahlProg <- data %>% bind_rows
-  
+  #wahlProg <- data %>% bind_rows
+  wahlProg <- data.table::rbindlist(data, fill = TRUE)
   
   ###------------------------------------------ CLEANING ------------------------------------------###
   ##
@@ -116,9 +116,11 @@ getPollData <- function(dateMax = Sys.Date()) {
     which(wahlProg == 'Bundestagswahl', arr.ind = TRUE)[, 1],
     which(wahlProg == 'Wahl 1998', arr.ind = TRUE)[, 1]
   )
-  wahlProg %<>%
-    filter(!row_number() %in% omit)
+  wahlProg <- wahlProg[-omit,]
+  #wahlProg %<>%
+  #  filter(!row_number() %in% omit)
   
+  wahlProg <-  as.data.frame(wahlProg)[, which(!duplicated(colnames(wahlProg)))]  
   # set each party's column to numeric and divide by 100
   wahlProg %<>%
     mutate_each(funs(gsub(" %", "", .))) %>%
