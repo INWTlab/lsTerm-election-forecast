@@ -75,8 +75,8 @@ pollDataShock <- pollData %>% arrange(desc(Datum)) %>% na.locf(na.rm = FALSE) %>
 dateSeq <- seq(min(pollDataShock$Datum), max(pollDataShock$Datum) , by = "week")
 smoothProportions <- sapply(colnames(pollDataShock)[3:7],
                             function(y){ 
-                              sSpline <- smooth.spline(x = pollDataShock$Datum,
-                                                       y = unlist(pollDataShock[,y]))
+                              sSpline <- smooth.spline(x = as.numeric(pollDataShock$Datum),
+                                                       y = unlist(pollDataShock[,y]), cv = TRUE, nknots = 500)
                               predict(sSpline, x = as.numeric(dateSeq))$y
                             })
 
