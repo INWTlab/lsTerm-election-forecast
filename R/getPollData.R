@@ -122,7 +122,7 @@ getPollData <- function(dateMax = Sys.Date()) {
   
   wahlProg <-  as.data.frame(wahlProg)[, which(!duplicated(colnames(wahlProg)))]  
   # set each party's column to numeric and divide by 100
-  wahlProg %<>%
+  wahlProg <- wahlProg %>%
     mutate_each(funs(gsub(" %", "", .))) %>%
     mutate_each(funs(gsub(",", ".", .))) %>%
     mutate(`CDU/CSU` = as.numeric(`CDU/CSU`) / 100) %>%
@@ -143,14 +143,14 @@ getPollData <- function(dateMax = Sys.Date()) {
     mutate(`REP/DVU` = as.numeric(`REP/DVU`) / 100)
   
   # the column 'Befragte' includes lots of non-numeric chars like '~', '?', '.', ...
-  wahlProg %<>%
+  wahlProg  <- wahlProg %>%
     mutate(Befragte = as.numeric(gsub("\\D", "", Befragte)))
   
   
   
   # Datum
   wahlProg$Datum <- gsub('[*]', '', wahlProg$Datum)
-  wahlProg$Datum %<>% as.Date(wahlProg$Datum, format = "%d.%m.%Y")
+  wahlProg$Datum <- wahlProg$Datum %>% as.Date(wahlProg$Datum, format = "%d.%m.%Y")
   FW <- wahlProg$Institut %>% table %>% .[4] %>% names
   
   # wahlProg[is.na(wahlProg$Datum) == TRUE &
@@ -170,7 +170,7 @@ getPollData <- function(dateMax = Sys.Date()) {
   #            wahlProg$SPD == 0.32 , ]$Datum <- as.Date('2005-12-01')
   
   # add pds to linke and sum irrelevant parties up to 'Sonstige'
-  wahlProg %<>%
+  wahlProg <- wahlProg %>%
     mutate(
       LINKE = pmax(LINKE, Linke.PDS, PDS, na.rm = TRUE),
       Linke.PDS = 0,
@@ -178,7 +178,7 @@ getPollData <- function(dateMax = Sys.Date()) {
     )
   
   # select relevant variables
-  wahlProg %<>%
+  wahlProg <- wahlProg %>%
     dplyr::select(Institut,
                   Datum,
                   `CDU/CSU`,
@@ -188,7 +188,7 @@ getPollData <- function(dateMax = Sys.Date()) {
                   LINKE,
                   AfD,
                   Befragte)
-  wahlProg %<>% filter(!is.na(Datum), !is.na(Institut), !is.na(SPD))
+  wahlProg <- wahlProg %>% filter(!is.na(Datum), !is.na(Institut), !is.na(SPD))
   
   wahlProg$Sonstige <- 1 -  rowSums(wahlProg[, which(names(wahlProg) %in% 
                                                        c("CDU/CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AfD"))], na.rm = TRUE)

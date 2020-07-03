@@ -55,7 +55,7 @@ parameters {
   vector[NParties] pollError[NElections];
   cholesky_factor_corr[NParties] Eps_corr;
   cholesky_factor_corr[NParties] EpsPoll_corr;
-  vector<lower=0, upper = 0.5>[NParties] sigma_shift;
+  vector<lower=0, upper = 0.1>[NParties] sigma_shift;
   vector<lower=0, upper = 0.5>[NParties]  sigma_pollbias;
 }
 transformed parameters{
@@ -74,13 +74,13 @@ transformed parameters{
     y[i,1]         =  y_start[i];
     eta = 0;
     nu = 0;
-    eps[i] = (to_vector(epsilon[,i]) + opposition + govMatrix[i] * government) * (1 - theta2);
+    eps[i] = (to_vector(epsilon[,i]) + opposition + govMatrix[i] * government);
     
     sigma_sd[((i-1) * NPollsters + 1) : (i * NPollsters)] = sigma_sdParty[i] * sigma_sdPollster;
 
     for(n in 2:YTOTAL){
       y[i,n]         = y[i,n-1]  + eps[i,n] + nu - eta + phi * eps[i, n-1];
-      eta = eta * theta + (alpha * theta2 * nu) * (1 - theta);
+      eta = eta * theta + (alpha * nu) * (1 - theta);
       nu = (nu + eps[i,n] + phi * eps[i, n-1]) * theta2;
     }
     w[((i-1) * YTOTAL + 1) : (i * YTOTAL)] = y[i] + ElectionMatrix * to_vector(pollError[,i]);
@@ -96,15 +96,15 @@ model {
   y_start ~ normal(-1, 3);
   government ~ normal(0, 0.01);
   opposition ~ normal(0, 0.01);
-  alpha ~ normal(0.75, 0.2);
-  theta ~ normal(0.75, 0.2);
-  phi ~ normal(0.5, 0.2);
-  theta2 ~ normal(0.85, 0.15);
+  alpha ~ normal(0.75, 0.25);
+  theta ~ normal(0.75, 0.25);
+  phi ~ normal(0.5, 0.25);
+  theta2 ~ normal(0.75, 0.25);
   tau ~ normal(0, 0.05);
   tau2 ~ normal(0, 0.05);
-  mushift ~ normal(0.05, 0.03);
+  mushift ~ normal(0.005, 0.0025);
   mupbias ~ normal(0.1, 0.075);
-  sdshift ~ normal(0, 0.03);
+  sdshift ~ normal(0, 0.005);
   sdpbias ~ normal(0, 0.03);
   Eps_corr ~ lkj_corr_cholesky(1);
   EpsPoll_corr ~ lkj_corr_cholesky(1);

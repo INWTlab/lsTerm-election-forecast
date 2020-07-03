@@ -85,6 +85,11 @@ acfs <- rowMeans(apply(apply(smoothProportions, 2, diff), 2,
 plot(acfs, type = "h", xlab = "week after shock", ylab = "autocorrelation",
      main = "Aggregated empirical autocorrelation of differences")
 abline(h = 0)
+pacfs <- rowMeans(apply(apply(smoothProportions, 2, diff), 2,
+                       function(x) pacf(x, 30, plot = FALSE)$acf))
+plot(pacfs, type = "h", xlab = "week after shock", ylab = "autocorrelation",
+     main = "Aggregated empirical partial autocorrelation of differences")
+abline(h = 0)
 ```
 We can clearly see that there is a positive autocorrelation within the first weeks, turning negative between eight and 15 weeks after the initial shock. The latter interval can be seen as the period where the events get out of the short-term public memory. A clearer picture of the mean-reversing nature of polls can be seen when we integrate the autocorrelation function: 
 \medskip
