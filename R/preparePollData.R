@@ -133,3 +133,37 @@ preparePollData <- function(pollData, Elections, predDate) {
               timeSeq = timeSeq,
               parties = parties))
 }
+
+# prepareKoalitionData <- function(koalitionData){
+#   returnData <- matrix(NA, nrow = nrow(koalitionData), ncol = ncol(koalitionData))
+#   returnData[koalitionData == "Rot-Grün (SPD-Grüne)"] <- 5
+#   returnData[koalitionData == "Schwarz-Rot (CDU/CSU-SPD), Große Koalition unter Führung CDU/CSU"] <- 1
+#   returnData[koalitionData == "Schwarz-Gelb (CDU/CSU-FDP)"] <- 7
+#   returnData[koalitionData == "Schwarz-Grün (CDU/CSU-Grüne)"] <- 4
+#   returnData[koalitionData == "Schwarz-Gelb-Grün (CDU/CSU-FDP-Grüne), 'Jamaika'"] <- 8
+#   returnData[koalitionData == "Rot-Rot-Grün (SPD-Linke-Grüne)"] <- 2
+#   returnData[koalitionData == "Rot-Gelb-Grün (SPD-FDP-Grüne), 'Ampel'"] <- 3
+#   returnData[koalitionData == "Rot-Schwarz (SPD-CDU), Große Koalition unter Führung SPD"] <- 6
+#   returnData
+#   
+#   koalitionenRankings <- returnData
+#   koalitionenRankings <- cbind(koalitionenRankings, NA, NA, NA, NA)
+#   for(i in 1:nrow(koalitionenRankings)){
+#     for(j in 1:(ncol(koalitionenRankings)-1)){
+#       if(koalitionenRankings[i,j] == 5){
+#         koalitionenRankings[i, ] <- c(koalitionenRankings[i,1:j], 9, koalitionenRankings[i,(j+1):(ncol(koalitionenRankings)-1)])
+#       }
+#       if(koalitionenRankings[i,j] == 2){
+#         koalitionenRankings[i, ] <- c(koalitionenRankings[i,1:j], 10, koalitionenRankings[i,(j+1):(ncol(koalitionenRankings)-1)])
+#       }
+#       if(koalitionenRankings[i,j] == 3){
+#         koalitionenRankings[i, ] <- c(koalitionenRankings[i,1:j], 11, koalitionenRankings[i,(j+1):(ncol(koalitionenRankings)-1)])
+#       }
+#       
+#     }
+#   }
+#   koalitionenRankings <- as.data.frame(koalitionenRankings[,-ncol(koalitionenRankings)])
+#   koalitionenRankings
+# }
+
+
