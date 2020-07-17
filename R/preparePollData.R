@@ -1,6 +1,6 @@
 #' @export
 preparePollData <- function(pollData, Elections, predDate) {
-  minDate <- "1998-01-01"
+  minDate <- "1990-01-01"
   pollData <- pollData %>% arrange(desc(Datum)) %>% filter(Datum > minDate)
   Elections$Datum <- as.Date(Elections$Datum)
   Elections <- Elections %>% filter(Datum > minDate)
@@ -95,8 +95,7 @@ preparePollData <- function(pollData, Elections, predDate) {
   }
   
   govMatrix <- t(govMatrix)
-  Zero = matrix(0, ncol = nrow(govMatrix), nrow = ncol(govMatrix))
-  Zero2 = matrix(0, ncol = nrow(govMatrix), nrow = NElections)
+  #govMatrix <- rbind(govMatrix, rep(0, ncol(govMatrix)))
   
   weight <- exp(0.002 * (allData2$Datum - max(allData2$Datum)))
   
@@ -120,8 +119,6 @@ preparePollData <- function(pollData, Elections, predDate) {
               pollData = pollData,
               IMatrix = IMatrix,
               IMatrixEl = IMatrixEl,
-              Zero = Zero,
-              Zero2 = Zero2,
               govMatrix = govMatrix,
               electionIndikator2 = electionIndikator2,
               ElectionMatrix = electionIndikator3,
