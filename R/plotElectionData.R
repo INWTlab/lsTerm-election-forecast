@@ -11,7 +11,9 @@ plotElectionData <- function(modelResults, data, predDate,
                upper = apply(modelResults$samples$y[,x,] %>% logistic, 2, quantile, 0.975),
                time = timeSeq,
                party = data$parties[x])
-  }) %>% bind_rows()
+  }) %>% bind_rows() %>% arrange(as.character(party)) %>% filter(time >= start)
+  
+  plotData$party <- as.character(plotData$party)
   
   partyColors <- c("dodgerblue4", "black", "yellow", "green", "purple", "red")
 
@@ -21,7 +23,7 @@ plotElectionData <- function(modelResults, data, predDate,
     geom_ribbon(aes(ymin = lower, ymax = upper,
                     fill = party),alpha = 0.3, colour = NA, show.legend = FALSE) + 
     scale_color_manual(values = partyColors) + scale_fill_manual(values=partyColors) +
-    xlim(as.POSIXct(c(start, data$nextElectionDate)) + c(0, 3600 * 24)) + scale_y_continuous(limits = c(0, 0.6)) + 
+    xlim(as.POSIXct(c(start, data$nextElectionDate)) + c(0, 3600 * 24)) + scale_y_continuous(limits = c(0, pmin(1, 0.01 + max(plotData$upper)))) + 
     geom_vline(xintercept = as.POSIXct(data$nextElectionDate)) + 
     geom_vline(xintercept = as.POSIXct(predDate)) + 
     annotate(geom = "text", x=as.POSIXct(predDate), y=0.02,

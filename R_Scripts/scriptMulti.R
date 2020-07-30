@@ -1,10 +1,10 @@
 predDate <- Sys.Date()
-
+Sys.setenv(LOCAL_CPPFLAGS = '-march=native -mtune=native')
 dataDE <- loadDataDE()
 dataPrep <- preparePollData(dataDE$pollData, dataDE$Elections, predDate)
 modelResults <- compileRunModel(dataPrep$modelData)
 plotForecast <- plotElectionData(modelResults, dataPrep, predDate,
-                                 start = "2016-01-01")
+                                 start = "2018-01-01")
 fact_forecast <- getForecastTable(modelResults, dataPrep, predDate)
 fact_event_prob <- eventsDE(modelResults, dataPrep, predDate)
 fact_coalition_prob <- koalitionDE(dataDE$Koalitionen, modelResults, dataPrep, predDate)

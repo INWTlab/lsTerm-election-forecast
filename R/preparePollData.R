@@ -96,6 +96,8 @@ preparePollData <- function(pollData, Elections, predDate) {
   
   govMatrix <- t(govMatrix)
   #govMatrix <- rbind(govMatrix, rep(0, ncol(govMatrix)))
+  Zero = matrix(0, ncol = nrow(govMatrix), nrow = ncol(govMatrix))
+  Zero2 = matrix(0, ncol = nrow(govMatrix), nrow = NElections)
   
   weight <- exp(0.002 * (allData2$Datum - max(allData2$Datum)))
   
@@ -120,6 +122,8 @@ preparePollData <- function(pollData, Elections, predDate) {
               IMatrix = IMatrix,
               IMatrixEl = IMatrixEl,
               govMatrix = govMatrix,
+              Zero = Zero,
+              Zero2 = Zero2,
               electionIndikator2 = electionIndikator2,
               ElectionMatrix = electionIndikator3,
               weight = weight)
