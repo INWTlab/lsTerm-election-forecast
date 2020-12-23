@@ -51,8 +51,7 @@ getPollData <- function(dateMax = Sys.Date()) {
   # due to website structure every second element in the second level list is NULL
   raw <- completeUrlList %>%
     sapply(function(x)
-      sapply(x, readHTMLTable))
-  
+      sapply(x, function(y) readHTMLTable(rawToChar(GET(y)$content))))
   
   ###------------------------------------------ PREPARE FOR THE MERGE ------------------------------------------###
   ##

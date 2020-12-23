@@ -1,6 +1,6 @@
 #' @export
-preparePollData <- function(pollData, Elections, predDate) {
-  minDate <- "1990-01-01"
+preparePollData <- function(pollData, Elections, predDate,
+                            minDate = predDate - 365 * 16) {
   pollData <- pollData %>% arrange(desc(Datum)) %>% filter(Datum > minDate)
   Elections$Datum <- as.Date(Elections$Datum)
   Elections <- Elections %>% filter(Datum > minDate)
@@ -39,10 +39,10 @@ preparePollData <- function(pollData, Elections, predDate) {
   IMatrixEl[rowSums(IMatrix) == 0, ] <- 0
   #Remove pollster variable (institute), create numeric date (weeks since 1970)
   #allData2 <- allData2 %>% select(-Institut)
-  pollData <- allData2$prop
+  pollDataVec <- allData2$prop
   
   #Logit-transformation
-  pollData <- log(pollData / (1 - pollData))
+  pollDataVec <- log(pollDataVec / (1 - pollDataVec))
   
   #create weekly sequence for state-space
   timeSeq <- seq(min(allData2[,"Datum"]), max(allData2[,"Datum"]) + 65, by = 1)
@@ -53,7 +53,7 @@ preparePollData <- function(pollData, Elections, predDate) {
   
   #get constants
   NParties <- length(unique(allData2$party))
-  NTOTAL = length(pollData)
+  NTOTAL = length(pollDataVec)
   YTOTAL = length(timeSeq)
   NPollsters = length(unique(allData2$Institut)) - 1
   
@@ -94,10 +94,14 @@ preparePollData <- function(pollData, Elections, predDate) {
     }
   }
   
+  ElectionMatrix <- electionIndikator3
+  ElectionVector <- ElectionMatrix[, NElections]
+  ElectionMatrix <- ElectionMatrix[, 1:(NElections - 1)]
+  
   govMatrix <- t(govMatrix)
   #govMatrix <- rbind(govMatrix, rep(0, ncol(govMatrix)))
   Zero = matrix(0, ncol = nrow(govMatrix), nrow = ncol(govMatrix))
-  Zero2 = matrix(0, ncol = nrow(govMatrix), nrow = NElections)
+  Zero2 = matrix(0, ncol = nrow(govMatrix), nrow = NElections - 1)
   
   weight <- exp(0.002 * (allData2$Datum - max(allData2$Datum)))
   
@@ -118,19 +122,20 @@ preparePollData <- function(pollData, Elections, predDate) {
               NPollsters = NPollsters,
               NParties = NParties,
               matchedDates = matchedDates,
-              pollData = pollData,
+              pollData = pollDataVec,
               IMatrix = IMatrix,
               IMatrixEl = IMatrixEl,
               govMatrix = govMatrix,
               Zero = Zero,
               Zero2 = Zero2,
               electionIndikator2 = electionIndikator2,
-              ElectionMatrix = electionIndikator3,
+              ElectionMatrix = ElectionMatrix,
+              ElectionVector = ElectionVector,
               weight = weight)
   
   return(list(modelData = data,
               nextElectionDate = nextElectionDate,
-              plotPollData = plotPollData, 
+              plotPollData = pollData, 
               timeSeq = timeSeq,
               parties = parties))
 }
