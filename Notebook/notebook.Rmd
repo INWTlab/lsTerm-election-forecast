@@ -63,7 +63,7 @@ How can this kind mean-reversion process be interpreted? The idea is to model th
 
 In contrast, FiveThirtyEight, for example, follows an approach where economic factors are used for forecasting and weighted with poll data forecasts. The proposed approach follows a different philosophy. It can be argued similar to the market efficiency hypothesis in the equity market all (economic,..) information is already incorporated in the current voters intention. Short term fluctuations of polls long before election are mitigated by the long-/short term memory model, while for models with economic factors this is done by weighting factor forecasts with polls. While both approaches yield similar results, for the presented one there is less danger of overfitting and variable selection bias. 
 
-Is there evidence for a long-/short memory of voters in the data on the German federal election? To investigate empirically, the polls are smoothed on a weekly basis using a smoothing spline, compute the autocorrelation functions (ACFs) on the weekly differences, and average the ACFs on all parties, exluding AfD (as this right-wing party appeared only a few years ago):
+Is there evidence for a long-/short memory of voters in the data on the German federal election? To investigate empirically, the polls are smoothed on a weekly basis using a smoothing spline, compute the autocorrelation functions (ACFs) on the weekly differences, and average the ACFs on all parties, excluding AfD (as this right-wing party appeared only a few years ago):
 \medskip
 ```{r plot shock, warning=FALSE, echo = TRUE, message=FALSE}
 pollDataShock <- dataDE$pollData %>% arrange(desc(Datum)) %>% na.locf(na.rm = FALSE) %>% 
@@ -310,11 +310,11 @@ transformed data {
 \bigskip
 
 ## Sampling with RStan
-Now the model can be compiled and sample from. The quite complex nature of the model requires a tree depth of 13 or more. Together with the large number of parameters (several thousands) it takes at least 12 hours to complete it, depending on the machine. For this report, several models were pre-computed at different points in time and the samples were saved previously. 
+Now the model can be compiled and sample from. The quite complex nature of the model requires a tree depth of 13 or more. Together with the large number of parameters (several tens of thousands) it takes at least 12 hours to complete it, depending on the machine. For this report, several models were pre-computed at different points in time and the samples were saved previously. 
 \medskip
 ```{r results, warning=FALSE, echo = TRUE, message=FALSE}
 #modelResults <- compileRunModel(dataPrep$modelData)
-load("model_results/Model_2017_03_25.RData")
+#load("model_results/Model_2017_03_25.RData")
 ```
 \bigskip
 
@@ -324,71 +324,39 @@ load("model_results/Model_2017_03_25.RData")
 Six months before the election, the Social Democratic Party (SPD) experienced a large increase (from slightly over 20\% to more than 30\%  in the polls) in vote share due to hype from the recently-announced Chancellor candidate Martin Schulz. From the picture below, one can clearly see a mean-reversing trend until the election date for the SPD (in red). The model estimates of the vote share for each party are presented as solid lines, with additional 95% credible bands from January 1st, 2016, until the date of election on September 24th, 2017. The date of prediction (vertical line) and the poll results (points) are also added:
 \medskip
 ```{r modelling, warning=FALSE, echo = TRUE, message=FALSE}
-plotData <- lapply(1:NParties, function(x){
-  data.frame(estimate = samples$y[,x,] %>% logistic %>% colMeans,
-             lower = apply(samples$y[,x,] %>% logistic, 2, quantile, 0.025),
-             upper = apply(samples$y[,x,] %>% logistic, 2, quantile, 0.975),
-             time = as.POSIXct(timeSeq*60*60*24*7, origin = "1970-01-01"),
-             party = factor(rownames(pollData)[x]))
-}) %>% bind_rows()
-plotPollData <- as.data.frame(logistic(t(pollData)))
-plotPollData <- cbind(plotPollData,
-                           data.frame(time = as.POSIXct(timeSeq[matchedDates]*60*60*24*7,
-                                             origin = "1970-01-01")))
-
-plotPollData <- plotPollData %>% as_tibble %>% gather(key = "party",
-                                                      value = "proportion", -time)
-partyColors <- c("dodgerblue4", "black", "yellow", "green", "purple", "red")
-ggplot(data = plotData, aes(x = time, y = estimate, group = party,
-                            colour = party)) + geom_line() + 
-  geom_ribbon(aes(ymin = lower, ymax = upper,
-                  fill = party),alpha = 0.3, colour = NA, show.legend = FALSE) + 
-    scale_color_manual(values=partyColors) +   scale_fill_manual(values=partyColors) +
-  xlim(as.POSIXct(c("2016-01-01", "2017-09-30"))) + ylim(0,0.42) + 
-  geom_vline(xintercept = as.POSIXct("2017-09-25")) + 
-  geom_vline(xintercept = as.POSIXct(predDate)) + 
-  annotate(geom = "text", x=as.POSIXct(predDate), y=0.02,
-           label="prediction date", angle = 25, size = 2) +
-  annotate(geom = "text", x=as.POSIXct("2017-09-25"),
-           y=0, label="election date", angle = 25, size = 2)  +
-  geom_point(data = plotPollData, aes(x = time, y = proportion, group = party), alpha = 0.3)
+plotForecast <- plotElectionData(modelResults, dataPrep, predDate,
+                                 dataDE$pollData, start = "2016-01-01")
+plotForecast$plot
 ```
 
 To assess the predictive performance, the prediction is evaluated by the RMSE ("Root Mean Square Error"). As competitors or comparison the most recent poll and the average of the most recent poll of each pollster is used:
 \medskip
 ```{r performance, warning=FALSE, echo = TRUE, message=FALSE}
-predElection <- samples$y[,,which(timeSeq == 
-                                    ceiling(as.numeric(difftime(as.Date("2017-09-25"),
-                                                                as.Date("1970-01-01"),
-                                                                units = "weeks"))))] %>%
-  logistic %>% colMeans
+predElection <- getForecastTable(modelResults, dataPrep, predDate) %>% filter(type == "election_day")
+
 #Model predictions:
 predElection
 #Recent polls:
-knitr::kable(pollsTemp %>% filter(Datum <= predDate) %>% 
+knitr::kable(dataDE$pollData %>% filter(Datum <= predDate) %>% 
   arrange(desc(Datum)) %>% 
   group_by(Institut) %>% slice(1))
 
 #Compute competitors
-predRecent <- pollsTemp %>% filter(Datum <= predDate) %>% 
+partyNames <- c("CDU/CSU","SPD", "GRÜNE", "FDP", "LINKE", "AfD")
+predRecent <- dataDE$pollData %>% filter(Datum <= predDate) %>% 
   arrange(desc(Datum)) %>% select(partyNames) %>% 
   slice(1) %>% unlist
 predRecent
-predAvgRecent <- pollsTemp %>% filter(Datum <= predDate) %>% 
+predAvgRecent <- dataDE$pollData %>% filter(Datum <= predDate) %>% 
   arrange(desc(Datum)) %>% 
   group_by(Institut) %>% slice(1) %>% ungroup %>% 
   select(partyNames) %>% colMeans %>% unlist
 predAvgRecent
 
 #RMSE model and competitors
-sqrt(mean((predElection - unlist(Elections %>% filter(Year == 2017) %>% 
-                                   select(partyNames)))^2)) %>% round(4)
-sqrt(mean((predRecent - unlist(Elections %>% filter(Year == 2017) %>% 
-                                 select(partyNames)))^2)) %>% round(4)
-sqrt(mean((predAvgRecent - unlist(Elections %>% filter(Year == 2017) %>% 
-                                    select(partyNames)))^2)) %>% round(4)
-
-
+sqrt(mean((predElection$estimate - unlist((dataDE$Elections %>% filter(Year == 2017))[, 1:6]))^2)) %>% round(5)
+sqrt(mean((predRecent - unlist((dataDE$Elections %>% filter(Year == 2017))[, 1:6]))^2)) %>% round(5)
+sqrt(mean((predAvgRecent - unlist((dataDE$Elections %>% filter(Year == 2017))[, 1:6]))^2)) %>% round(5)
 ```
 \bigskip
 
@@ -397,21 +365,13 @@ One can see that -- at least at this point in time, six months before the electi
 Now a look at a second prediction date, June 25th, 2017 -- three months before the election is taken:
 \medskip
 ```{r three months prior election, warning=FALSE, echo = TRUE, message=FALSE}
-predDate <- "2017-06-25"
-pollData <- getPollData(predDate) %>% arrange(desc(Datum))
-Elections <- read.csv2("data/Elections.csv", encoding = 'UTF-8')
-Elections$Datum <- as.Date(Elections$Datum)
-source('R/preparePollData.R', encoding = 'UTF-8')
-data <- preparePollData(pollData, Elections, predDate)
-# mpModel <- stan_model(file = "stan_models/lsModelUni.stan")
-# f <- sampling(mpModel,
-#               data = data,
-#               iter= 700, warmup = 600, chains = 4, cores = 4, seed = 124567,
-#               control = list(max_treedepth = 17, adapt_delta = 0.9))
-# samples <- extract(f)
-load("model_results/Model_2017_06_25.RData")
-source('R/plotElectionData.R', encoding = 'UTF-8')
-plotElectionData(samples, data, predDate)
+# predDate <- as.Date("2017-06-25")
+# dataDE <- loadDataDE(predDate)
+# dataPrep <- preparePollData(dataDE$pollData, dataDE$Elections, predDate)
+# modelResults <- compileRunModel(dataPrep$modelData)
+# plotForecast <- plotElectionData(modelResults, dataPrep, predDate,
+#                                  dataDE$pollData, start = "2016-01-01")
+plotForecast$plot
 ```
 
 In the Motivation section the effect of a single shock in time with the model and the estimated parameters was simulated. One instantly sees that the graph is very similar to the empirical evidence on the model-free smoothed data in the Motivation section. A maximum effect at around seven to eight weeks after the initial shock, which partially wears off in the following weeks can be identified. 
@@ -426,9 +386,9 @@ y <- rep(0,weeks)
 eps <- c(0, 1, rep(0,weeks-2))
 theta0 =  0.7
 theta1 =  0.95
-theta2 = mean(samples$theta2)
-alpha = mean(samples$alpha)
-alpha2 = mean(samples$alpha2)
+theta2 = mean(modelResults$samples$theta2)
+alpha = mean(modelResults$samples$alpha)
+alpha2 = mean(modelResults$samples$alpha2)
 
 for(n in 2:weeks){
   y[n]         = y[n-1]  + eps[n] + nu - eta - eta2;
@@ -439,9 +399,9 @@ for(n in 2:weeks){
 
 plot(y, type = "l", main = "Effect of a single shock (model based simulation)",
      xlab = "week after shock", ylab = "effect size")
-segments(x0 = 3.5, x1 = 31, y0 = 1.4, y1 = 1.4, lty = 3)
+segments(x0 = 2.8, x1 = 31, y0 = 1.4, y1 = 1.4, lty = 3)
 text(x = 26, y = 1.25, "Long-term memory")
-text(x = 9, y = 1.9, "Short-term memory")
+text(x = 9, y = 1.65, "Short-term memory")
 ```
 
 One can also do a full simulation and compute the autocorrelation function. Again, the result is very similar to the results on the smoothed polling data in the Motivation section:
@@ -463,42 +423,34 @@ for(n in 2:1000000){
 acf(diff(y), 30, xlab = "week after shock", ylab = "autocorrelation",
     main = "Model based autocorrelation")
 ```
-In the meantime, the uplift in vote share for the SPD has vanished almost completely, and the largest party, CDU/CSU (the party of Chancellor Angela Merkel) gained some share. The model predicts a mean-reversing trend for the CDU/CSU until election (i.e. a decrease in vote share), but also for the AfD, where the model predicts an increase in vote share. It also becomes obvious that the AfD has much larger credible intervals compared to the other three smaller parties on election day. This might be due to the fact that this party was only founded a few years ago and is less stable, therefore experiencing larger swings in vote share.
+In the meantime, the uplift in vote share for the SPD has vanished almost completely, and the largest party, CDU/CSU (the party of chancellor Angela Merkel) gained some share. The model predicts a mean-reversing trend for the CDU/CSU until election (i.e. a decrease in vote share), but also for the AfD, where the model predicts an increase in vote share. It also becomes obvious that the AfD has much larger credible intervals compared to the other three smaller parties on election day. This might be due to the fact that this party was only founded a few years ago and is less stable, therefore experiencing larger swings in vote share.
 
 ##### *Prediction the day prior to the election*
 Lastly, a closer look at the day before the election is taken:
 \medskip
 ```{r day prior election, warning=FALSE, echo = TRUE, message=FALSE}
-predDate <- "2017-09-23"
-pollData <- getPollData(predDate) %>% arrange(desc(Datum))
-Elections <- read.csv2("data/Elections.csv", encoding = 'UTF-8')
-Elections$Datum <- as.Date(Elections$Datum)
-source('R/preparePollData.R', encoding = 'UTF-8')
-data <- preparePollData(pollData, Elections, predDate)
-# mpModel <- stan_model(file = "stan_models/lsModelUni.stan")
-# f <- sampling(mpModel,
-#               data = data,
-#               iter= 700, warmup = 600, chains = 4, cores = 4, seed = 124567,
-#               control = list(max_treedepth = 17, adapt_delta = 0.9))
-# samples <- extract(f)
-load("model_results/Model_2017_09_23.RData")
-plotElectionData(samples, data, predDate, end = "2017-12-31")
+# predDate <- as.Date("2017-09-23")
+# dataDE <- loadDataDE(predDate)
+# dataPrep <- preparePollData(dataDE$pollData, dataDE$Elections, predDate)
+# modelResults <- compileRunModel(dataPrep$modelData)
+# plotForecast <- plotElectionData(modelResults, dataPrep, predDate,
+#                                  dataDE$pollData, start = "2016-01-01")
 ```
 The CDU/CSU lost some vote share, while the AfD gained quite a bit, confirming the estimated trend from the model above. 
 
 Now, a look at the effect of government and opposition status on a party is taken. As presumed, being in opposition has a positive influence (in terms of expected value) on the shock, while being in government has a negative effect:
 \medskip
 ```{r government effect, warning=FALSE, echo = TRUE, message=FALSE}
-goData <- data.frame(estimate = c(samples$opposition, samples$government),
-           status = rep(c("opposition", "government"), each = length(samples$government)))
+goData <- data.frame(estimate = c(modelResults$samples$opposition, modelResults$samples$government),
+           status = rep(c("opposition", "government"), each = length(modelResults$samples$government)))
 
 ggplot(goData, aes(estimate, colour= status, fill = status)) + geom_density(alpha = 0.3)
 ```
 
-The model allows us to also look at the "house bias" , i.e. the bias of a pollster on a specific party or the polling uncertainty. In the example of the "Allensbach" pollster, one sees that this pollster strongly favors the FDP and has a negative bias for the AfD party:
+The model allows us to also look at the "house bias" , i.e. the bias of a pollster on a specific party or the polling uncertainty. In the example of the "Allensbach" pollster, one sees that this pollster strongly favors the FDP:
 \medskip
 ```{r house bias, warning=FALSE, echo = TRUE, message=FALSE}
-biasAllensbach <- samples$housebias[,,1]
+biasAllensbach <- modelResults$samples$housebias[,grep("Allensbach", colnames(dataPrep$modelData$IMatrix))]
 colnames(biasAllensbach) <- partyNames
 boxplot(biasAllensbach, xlab = "Party", ylab = "Bias (logit-scale)",
         main = "House bias of pollster 'Allensbach'")

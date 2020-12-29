@@ -1,3 +1,4 @@
+#' @export
 getForecastTable <- function(modelResults, data, predDate){
   
   parties <- data$parties

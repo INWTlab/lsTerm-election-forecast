@@ -3,12 +3,12 @@ preparePollData <- function(pollData, Elections, predDate,
                             minDate = predDate - 365 * 16) {
   pollData <- pollData %>% arrange(desc(Datum)) %>% filter(Datum > minDate)
   Elections$Datum <- as.Date(Elections$Datum)
-  Elections <- Elections %>% filter(Datum > minDate)
+  #Elections <- Elections %>% filter(Datum > minDate)
   
   # combine election and polling data
   partyNames <- c("CDU/CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AfD")
   colnames(Elections)[1:length(partyNames)] <- partyNames
-  electionsTemp <- Elections[Elections$Datum < predDate, c("Institut", "Datum", partyNames)]
+  electionsTemp <- Elections[Elections$Datum < predDate & Elections$Datum > minDate, c("Institut", "Datum", partyNames)]
   pollsTemp <- pollData[,c("Institut", "Datum", partyNames)]
   names(electionsTemp) <- names(pollsTemp)
   
@@ -59,7 +59,6 @@ preparePollData <- function(pollData, Elections, predDate,
   
   pos <- matrix(c(sapply(unique(allData2$party), function(x) which(allData2$party == x)[1]),
                   sapply(unique(allData2$party), function(x) max(which(allData2$party == x)))), ncol = 2)
-  
   #create matrix of government parties
   source('R/createGovMatrix.R', encoding = 'UTF-8')
   govMatrix <- createGovMatrix(partyNames, YTOTAL, Elections, timeSeq)
