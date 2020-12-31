@@ -1,7 +1,7 @@
 ---
 title: "A long-short term event memory state-space model for multi-party elections"
 author: "Marcus Groß"
-date: '2020-09-12'
+date: '2020-12-30'
 output:
   pdf_document: default
   html_document:
@@ -33,7 +33,9 @@ The polling data for the German election, the "Bundestagswahl", is scraped from 
 require('lsTermElectionForecast')
 require('rstan')
 require('dplyr')
+require('tidyr')
 require('zoo')
+require('xlsx')
 
 dataDE <- loadDataDE(predDate)
 knitr::kable(head(dataDE$pollData))
@@ -87,7 +89,7 @@ One can clearly see that there is a positive autocorrelation within the first we
 ```{r plot integrated acfs, warning=FALSE, echo = TRUE, message=FALSE}
 plot(c(0,cumsum(acfs)), type = "l", xlab = "week after shock", ylab = "effect size",
      main = "Effect of a shock (empirical)")
-segments(x0 = 3.9, x1 = 32, y0 = 2.25, y1 = 2.25, lty = 3)
+segments(x0 = 3.5, x1 = 32, y0 = 2.25, y1 = 2.25, lty = 3)
 text(x = 26, y = 2.1, "Long-term memory")
 text(x = 10, y = 2.9, "Short-term memory")
 ```
@@ -162,23 +164,26 @@ $$ \nu_{pt, t} = \theta_2 \cdot (\nu_{pt, t-1} + \epsilon_{pt, t-1})$$
 
 The diminishing short- and mid- term effect parameter $\eta_{1_{pt, t}}$ and $\eta_{2_{pt, t}}$ also follow a process resembling AR1. The additional parameters $\alpha$ and $\alpha_2$ govern the amount of "forgetting" that takes place. For $\alpha=1$, the long-term effect is zero, while for $\alpha=0$, the long-term effect equals the short-term effect. The parameters $\theta_0$ and $\theta_1$ mark the short- and mid-term memory decay speed. They are fixed to 0.7 and 0.95, for half times of about 2 weeks and 3 months.
 $$ \eta_{1_{pt, t}} = \theta_0 \cdot \eta_{1_{pt, t-1}} + (1-\theta_0)\cdot\alpha\cdot\nu_{pt, t-1}$$
-$$ \eta_{2_{pt, t}} = \theta_1 \cdot \eta_{2_{pt, t-1}} + (1-\theta_1)\cdot\alpha_{2}\cdot\nu_{pt, t-1})$$
+$$ \eta_{2_{pt, t}} = \theta_1 \cdot \eta_{2_{pt, t-1}} + (1-\theta_1)\cdot\alpha_{2}\cdot\nu_{pt, t-1}$$
 
 Within *STAN*, the model, transformed parameters, and priors (mostly weakly informative, matched on the right scale) are the following. Many parameters were also generously interval-restricted, which turned out to be beneficial for fitting the model:
 \medskip
-```{r stanCode, warning=FALSE, echo = TRUE, message=FALSE, eval = FALSE}
+```{r stanCode, warning=FALSE, echo = TRUE, message=FALSE, eval = FALSE, output.var = ""}
 parameters {
   vector[NParties] y_start; // true vote share in first week
   real<lower=0, upper = 1> theta2; // weekly event spread AR1 parameter
   real<lower=0, upper = 1> alpha; //short term memory loss
   real<lower=0, upper = 0.8> alpha2; //short term memory loss
-  vector<lower=-0.5, upper = 0.5>[NPollsters * NParties] housebias; //long term house bias party-pollster-combination
-  vector<lower=-0.5, upper = 0.5>[NElections * NPollsters * NParties] housebiasEl; //short term (election) house bias party-pollster-combination
+  //long term house bias party-pollster-combination
+  vector<lower=-0.5, upper = 0.5>[NPollsters * NParties] housebias;
+  //short term (election) house bias party-pollster-combination
+  vector<lower=-0.5, upper = 0.5>[NElections * NPollsters * NParties] housebiasEl; 
   real<lower=0, upper = 0.15> tau; //house bias sd
   real<lower=0, upper = 0.15> tau2; //house bias election sd
   real<lower=0, upper = 0.2> muPollster; // expectation of pollster sd
   real<lower=0, upper = 0.1> sdPollster; // sd of pollster sd
-  vector<lower=0, upper = 5>[NParties] sigma_sdParty; // factor applied to pollster sd by party
+  // factor applied to pollster sd by party
+  vector<lower=0, upper = 5>[NParties] sigma_sdParty; 
   real<lower=0, upper = 0.15> mushift; // expectation of weekly shift sd
   real<lower=0, upper = 0.075> sdshift; // sd of weekly shift sd
   real<lower=0, upper = 0.3> mupbias; // expectation of common pollbias sd
@@ -186,7 +191,8 @@ parameters {
   real<lower=-0.05, upper = 0.05> opposition; //opposition effect on weekly shift
   real<lower=-0.05, upper = 0.05> government; //government effect on weekly shift
   vector[NParties] epsilon[YTOTAL]; //weekly shift
-  vector[NParties] pollError[NElections - 1]; // common pollbias for party-election combination
+  // common pollbias for party-election combination
+  vector[NParties] pollError[NElections - 1]; 
   cholesky_factor_corr[NParties] Eps_corr; // correlation matrix of weekly shift
   cholesky_factor_corr[NParties] EpsPoll_corr; // correlation matrix of common poll bias
   vector[NPollsters] sigma_sdPollster_raw; // untransformed pollster sd
@@ -216,21 +222,31 @@ transformed parameters{
     eta = 0; 
     eta2 = 0; 
     nu = 0; 
-    eps[i] = ((to_vector(epsilon[,i]) .* sqrt(u)) + opposition + govMatrix[i] * government) * sqrt(1-square(theta2));
-    sigma_sd[((i-1) * NPollsters + 1) : (i * NPollsters)] = (sigma_sdParty[i] / mean(sigma_sdParty)) * sigma_sdPollster;
+    eps[i] = ((to_vector(epsilon[,i]) .* sqrt(u)) + 
+                opposition + govMatrix[i] * government) * sqrt(1-square(theta2));
+    sigma_sd[((i-1) * NPollsters + 1) : (i * NPollsters)] = 
+      (sigma_sdParty[i] / mean(sigma_sdParty)) * sigma_sdPollster;
 
     for(n in 2:YTOTAL){
       y[i,n]         = y[i,n-1]  + eps[i,n] + nu - eta - eta2;
-      eta = eta * theta0 + alpha * nu * (1 - theta0) / sqrt(1-square(theta0)) * theta2; // short term memory loss (after fraction line: regularization)
-      eta2 = eta2 * theta1 + alpha2 * nu * (1 - theta1) / sqrt(1-square(theta1)) * theta2;  // mid term memory loss (after fraction line: regularization)
+      // short term memory loss (after fraction line: regularization)
+      eta = eta * theta0 + alpha * nu * (1 - theta0) / 
+        sqrt(1-square(theta0)) * theta2; 
+      // mid term memory loss (after fraction line: regularization)
+      eta2 = eta2 * theta1 + alpha2 * nu * (1 - theta1) / 
+        sqrt(1-square(theta1)) * theta2;  
       nu = (eps[i,n] + nu) * theta2;
     }
-    w[((i-1) * YTOTAL + 1) : (i * YTOTAL)] = y[i] + ElectionMatrix * to_vector(pollError[,i]);
+    w[((i-1) * YTOTAL + 1) : (i * YTOTAL)] = y[i] + 
+      ElectionMatrix * to_vector(pollError[,i]);
   }
     mu = w[matchedDates] + 
-    csr_matrix_times_vector(NTOTAL, NPollsters * NParties, Aw1, Av1, Au1, housebias) + 
-    csr_matrix_times_vector(NTOTAL, NPollsters * NParties * NElections, Aw2, Av2, Au2, housebiasEl);
-    sigma = csr_matrix_times_vector(NTOTAL, NPollsters * NParties, Aw1, Av1, Au1, sigma_sd) + 0.002;
+    csr_matrix_times_vector(NTOTAL, NPollsters * NParties,
+                            Aw1, Av1, Au1, housebias) + 
+    csr_matrix_times_vector(NTOTAL, NPollsters * NParties * NElections,
+                            Aw2, Av2, Au2, housebiasEl);
+    sigma = csr_matrix_times_vector(NTOTAL, NPollsters * NParties,
+                                    Aw1, Av1, Au1, sigma_sd) + 0.002;
 }
 model {
   sigma_shift_raw ~ std_normal();
@@ -253,8 +269,10 @@ model {
   muPollster ~ normal(0.1, 0.05);
   sdPollster ~ normal(0.05, 0.025);
   u ~ scaled_inv_chi_square(nuT, 1);
-  epsilon ~ multi_normal_cholesky(Zero, diag_pre_multiply(sigma_shift, Eps_corr));
-  pollError ~ multi_normal_cholesky(Zero2, diag_pre_multiply(sigma_pollbias, EpsPoll_corr));
+  epsilon ~ multi_normal_cholesky(Zero,
+                                  diag_pre_multiply(sigma_shift, Eps_corr));
+  pollError ~ multi_normal_cholesky(Zero2,
+                                    diag_pre_multiply(sigma_pollbias, EpsPoll_corr));
   sigma_sdParty ~ normal(1, 0.5);
   housebias ~ normal(0, tau);
   housebiasEl ~ normal(0, tau2);
@@ -271,7 +289,7 @@ Before the model is compiled and sampled from, the polling and election data are
 dataPrep <- preparePollData(dataDE$pollData, dataDE$Elections, predDate)
 ```
 After preparation the result is transferred to stan, where for performance reasons a sparse representation of dummy matrices is computed:
-```{r stanCode2, warning=FALSE, echo = TRUE, message=FALSE, eval = FALSE}
+```{r stanCode2, warning=FALSE, echo = TRUE, message=FALSE, eval = FALSE, output.var = " "}
 data {
   int<lower=0> NTOTAL; // number of poll results (one for each poll and party)
   int<lower=0> NElections; // number of elections (including upcoming)
@@ -280,13 +298,21 @@ data {
   int<lower=0> NParties; //  number of parties
   int matchedDates[NTOTAL]; // matches polls with week number
   vector[NTOTAL] pollData; // poll results
-  matrix[NTOTAL, NPollsters * NParties] IMatrix; // dummy matrix party-pollster interaction for poll assignment
-  matrix[NTOTAL, NElections * NPollsters * NParties] IMatrixEl; // dummy matrix party-pollster-election interaction for poll assignment
-  vector[YTOTAL] govMatrix[NParties]; // dummy matrix for each party and week combination gov = 1, opposition = 0; for week assignment 
-  matrix[YTOTAL, NElections - 1] ElectionMatrix; // dummy matrix election for week assignment 
-  vector[YTOTAL] ElectionVector; //dummy variable upcoming election (0/1) for week assignment
-  vector[NParties] Zero[YTOTAL]; //matrix of zeros for vote share shift by week expectation
-  vector[NParties] Zero2[NElections - 1]; //matrix of zeros for poll error by week expectation
+  // dummy matrix party-pollster interaction for poll assignment
+  matrix[NTOTAL, NPollsters * NParties] IMatrix; 
+  // dummy matrix party-pollster-election interaction for poll assignment
+  matrix[NTOTAL, NElections * NPollsters * NParties] IMatrixEl;
+  // dummy matrix for each party and week combination gov = 1,
+  // opposition = 0; for week assignment 
+  vector[YTOTAL] govMatrix[NParties];
+  // dummy matrix election for week assignment
+  matrix[YTOTAL, NElections - 1] ElectionMatrix; 
+  //dummy variable upcoming election (0/1) for week assignment
+  vector[YTOTAL] ElectionVector;
+  //matrix of zeros for vote share shift by week expectation
+  vector[NParties] Zero[YTOTAL]; 
+  //matrix of zeros for poll error by week expectation
+  vector[NParties] Zero2[NElections - 1]; 
 }
 transformed data {
   real theta0 = 0.7; // short term decay
@@ -314,7 +340,7 @@ Now the model can be compiled and sample from. The quite complex nature of the m
 \medskip
 ```{r results, warning=FALSE, echo = TRUE, message=FALSE}
 #modelResults <- compileRunModel(dataPrep$modelData)
-#load("model_results/Model_2017_03_25.RData")
+load("model_results/modelResults_250317.Rdata")
 ```
 \bigskip
 
@@ -332,31 +358,35 @@ plotForecast$plot
 To assess the predictive performance, the prediction is evaluated by the RMSE ("Root Mean Square Error"). As competitors or comparison the most recent poll and the average of the most recent poll of each pollster is used:
 \medskip
 ```{r performance, warning=FALSE, echo = TRUE, message=FALSE}
-predElection <- getForecastTable(modelResults, dataPrep, predDate) %>% filter(type == "election_day")
+predElection <- getForecastTable(modelResults, dataPrep, predDate) %>% 
+  filter(type == "election_day")
 
 #Model predictions:
-predElection
+predElection$party <- dataPrep$parties
+knitr::kable(predElection[, c(1, 8, 4, 5, 6)])
 #Recent polls:
 knitr::kable(dataDE$pollData %>% filter(Datum <= predDate) %>% 
   arrange(desc(Datum)) %>% 
   group_by(Institut) %>% slice(1))
 
 #Compute competitors
-partyNames <- c("CDU/CSU","SPD", "GRÜNE", "FDP", "LINKE", "AfD")
 predRecent <- dataDE$pollData %>% filter(Datum <= predDate) %>% 
-  arrange(desc(Datum)) %>% select(partyNames) %>% 
+  arrange(desc(Datum)) %>% select(dataPrep$parties) %>% 
   slice(1) %>% unlist
 predRecent
 predAvgRecent <- dataDE$pollData %>% filter(Datum <= predDate) %>% 
   arrange(desc(Datum)) %>% 
   group_by(Institut) %>% slice(1) %>% ungroup %>% 
-  select(partyNames) %>% colMeans %>% unlist
+  select(dataPrep$parties) %>% colMeans %>% unlist %>% round(3)
 predAvgRecent
 
 #RMSE model and competitors
-sqrt(mean((predElection$estimate - unlist((dataDE$Elections %>% filter(Year == 2017))[, 1:6]))^2)) %>% round(5)
-sqrt(mean((predRecent - unlist((dataDE$Elections %>% filter(Year == 2017))[, 1:6]))^2)) %>% round(5)
-sqrt(mean((predAvgRecent - unlist((dataDE$Elections %>% filter(Year == 2017))[, 1:6]))^2)) %>% round(5)
+sqrt(mean((predElection$estimate - unlist((dataDE$Elections %>% 
+                                             filter(Year == 2017))[, 1:6]))^2)) %>% round(4)
+sqrt(mean((predRecent - unlist((dataDE$Elections %>% 
+                                  filter(Year == 2017))[, 1:6]))^2)) %>% round(4)
+sqrt(mean((predAvgRecent - unlist((dataDE$Elections %>% 
+                                     filter(Year == 2017))[, 1:6]))^2)) %>% round(4)
 ```
 \bigskip
 
@@ -365,12 +395,13 @@ One can see that -- at least at this point in time, six months before the electi
 Now a look at a second prediction date, June 25th, 2017 -- three months before the election is taken:
 \medskip
 ```{r three months prior election, warning=FALSE, echo = TRUE, message=FALSE}
-# predDate <- as.Date("2017-06-25")
-# dataDE <- loadDataDE(predDate)
-# dataPrep <- preparePollData(dataDE$pollData, dataDE$Elections, predDate)
+predDate <- as.Date("2017-06-25")
+dataDE <- loadDataDE(predDate)
+dataPrep <- preparePollData(dataDE$pollData, dataDE$Elections, predDate)
 # modelResults <- compileRunModel(dataPrep$modelData)
-# plotForecast <- plotElectionData(modelResults, dataPrep, predDate,
-#                                  dataDE$pollData, start = "2016-01-01")
+load("model_results/modelResults_250617.Rdata")
+plotForecast <- plotElectionData(modelResults, dataPrep, predDate,
+                                 dataDE$pollData, start = "2016-01-01")
 plotForecast$plot
 ```
 
@@ -441,8 +472,10 @@ The CDU/CSU lost some vote share, while the AfD gained quite a bit, confirming t
 Now, a look at the effect of government and opposition status on a party is taken. As presumed, being in opposition has a positive influence (in terms of expected value) on the shock, while being in government has a negative effect:
 \medskip
 ```{r government effect, warning=FALSE, echo = TRUE, message=FALSE}
-goData <- data.frame(estimate = c(modelResults$samples$opposition, modelResults$samples$government),
-           status = rep(c("opposition", "government"), each = length(modelResults$samples$government)))
+goData <- data.frame(estimate = c(modelResults$samples$opposition,
+                                  modelResults$samples$government),
+           status = rep(c("opposition", "government"),
+                        each = length(modelResults$samples$government)))
 
 ggplot(goData, aes(estimate, colour= status, fill = status)) + geom_density(alpha = 0.3)
 ```
@@ -450,8 +483,9 @@ ggplot(goData, aes(estimate, colour= status, fill = status)) + geom_density(alph
 The model allows us to also look at the "house bias" , i.e. the bias of a pollster on a specific party or the polling uncertainty. In the example of the "Allensbach" pollster, one sees that this pollster strongly favors the FDP:
 \medskip
 ```{r house bias, warning=FALSE, echo = TRUE, message=FALSE}
-biasAllensbach <- modelResults$samples$housebias[,grep("Allensbach", colnames(dataPrep$modelData$IMatrix))]
-colnames(biasAllensbach) <- partyNames
+biasAllensbach <- modelResults$samples$housebias[, grep("Allensbach",
+                                                       colnames(dataPrep$modelData$IMatrix))]
+colnames(biasAllensbach) <- dataPrep$parties
 boxplot(biasAllensbach, xlab = "Party", ylab = "Bias (logit-scale)",
         main = "House bias of pollster 'Allensbach'")
 ```
@@ -469,11 +503,9 @@ Note that competitors 3 and 4 have an "unfair" hindsight advantage, as they are 
 The Root Mean Square Errors averaged over all parties is stored in an excel file:
 \medskip
 ```{r performance eval, warning=FALSE, echo = TRUE, message=FALSE}
-library("xlsx")
 predictivePerformance <- read.xlsx("model_results/PredictivePerformance.xlsx",
-                                   14, header=TRUE)
+                                   1, header=TRUE)
 knitr::kable(predictivePerformance)
-
 longData <- gather(predictivePerformance, "Method", "RMSE", -Date)
 ggplot(longData %>% filter(Method %in% c("Bayes", "Average", "Recent")),
        aes(y=RMSE, x= Date, colour = Method)) + geom_line() + 
@@ -518,3 +550,14 @@ Thus, for coalition A+B the total probability is (10 * 100\% + 15 * 15\%) / 100 
 
 To keep the Bayesian workflow, a dirichlet prior was chosen with all $\alpha_k$ set to 0.5, which changes the results slightly. Another small change to the setting described above was to introduce senior and junior partners, e.g. in the upper example for coalition A+B the expert were given two choices, namely with A as senior partner and B as senior partner, who provide the chancellor in each case. As (at least in Germany) there is an unwritten rule that the party with the most votes provides the chancellor, both coalitions rule out each other and the ranking between them is irrelevant. With this assumption one can also estimate the probability for a certain person being chancellor. In general, as coalition majorities are negatively correlated (e.g. A+B and C+D cannot have a majority at the same time), usually a low double-digit sample of experts already leads to high certainty in probability estimates. Besides the most voted party providing the chancellor, another assumption that is made concerns minority governments, which are ruled out. These are completely unusual in Germany (both on federal and state level), but for other countries with similar election system not unheard of and would require non-trivial model adjustments.
 
+The package includes a function with pre-defined coalitions to compute their probabilities. The big coalition (CDU/CSU + SPD) got by far the highest probability assigned (and eventually became government after election):
+
+```{r coalitions eval, warning=FALSE, echo = TRUE, message=FALSE}
+fact_coalition_prob <- koalitionDE(dataDE$Koalitionen, modelResults, dataPrep, predDate)
+coalition_parties <- c("CDU/CSU - SPD", "SPD - Linke - Grüne", "SPD - FDP-Grüne",
+                "CDU/CSU - Grüne", "SPD - Grüne", "SPD - CDU/CSU", 
+                "CDU/CSU - FDP", "CDU/CSU - FDP - Grüne", "Grüne - SPD",
+                "Grüne - SPD - Linke", "Grüne - SPD - FDP", "Grüne - CDU/CSU")
+fact_coalition_prob$coalition_parties <- coalition_parties
+knitr::kable(fact_coalition_prob[, c(1, 4, 3)])
+```

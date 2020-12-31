@@ -1,3 +1,4 @@
+#' @export
 createGovMatrix <- function(partyNames, YTOTAL, Elections, timeSeq){
   govMatrix <- matrix(0, ncol = length(partyNames),
                       nrow = YTOTAL,

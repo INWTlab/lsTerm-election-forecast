@@ -35,7 +35,7 @@ getForecastTable <- function(modelResults, data, predDate){
   forecastTable$date_last_update <- Sys.time()
   return(forecastTable)
 }
-
+#' @export
 eventsDE <- function(modelResults, data, predDate){
   electionForecast <- modelResults$samples$y[,,1 + which(data$timeSeq == 
                                                            floor(as.numeric(difftime(as.Date(data$nextElectionDate),
@@ -85,14 +85,14 @@ eventsDE <- function(modelResults, data, predDate){
              )
   )
 }
-
+#' @export
 koalitionDE <- function(koaldata, modelResults, data, predDate){
   # koalitionenRankings <- prepareKoalitionData(koaldata)
   
-  electionForecast <- modelResults$samples$y[,,1 + which(data$timeSeq == 
-                                                           floor(as.numeric(difftime(as.Date(data$nextElectionDate),
-                                                                                     as.Date("1970-01-04"),
-                                                                                     units = "weeks"))))] %>% logistic
+  electionForecast <- modelResults$samples$yFinal[,,1 + which(data$timeSeq == 
+                                                                floor(as.numeric(difftime(as.Date(data$nextElectionDate),
+                                                                                          as.Date("1970-01-04"),
+                                                                                          units = "weeks"))))] %>% logistic
   electionForecast <- cbind(electionForecast, 1 - rowSums(electionForecast))
   colnames(electionForecast) <- c(data$parties, "Sonstige")
   electionForecast <- as.data.frame(electionForecast)
@@ -112,7 +112,8 @@ koalitionDE <- function(koaldata, modelResults, data, predDate){
                         coalition_id_8 = (bundestag$`CDU/CSU` > bundestag$GRÜNE) & (bundestag$`CDU/CSU` + bundestag$FDP + bundestag$GRÜNE > 0.5),
                         coalition_id_9 = (bundestag$SPD < bundestag$GRÜNE) & (bundestag$SPD + bundestag$GRÜNE > 0.5),
                         coalition_id_10 = (bundestag$SPD < bundestag$GRÜNE) & (bundestag$LINKE + bundestag$SPD + bundestag$GRÜNE > 0.5),
-                        coalition_id_11 = (bundestag$SPD < bundestag$GRÜNE) & (bundestag$FDP + bundestag$SPD + bundestag$GRÜNE > 0.5))
+                        coalition_id_11 = (bundestag$SPD < bundestag$GRÜNE) & (bundestag$FDP + bundestag$SPD + bundestag$GRÜNE > 0.5),
+                        coalition_id_12 = (bundestag$`CDU/CSU` < bundestag$GRÜNE) & (bundestag$`CDU/CSU` + bundestag$GRÜNE > 0.5))
   
   KoalitionenProp <- matrix(0, ncol = ncol(koalSim), nrow=nrow(koalSim))
   colnames(KoalitionenProp) <- names(koalSim)
@@ -129,7 +130,7 @@ koalitionDE <- function(koaldata, modelResults, data, predDate){
              estimate = KoalitionenProp
   )
 }
-
+#' @export
 partOfGovernmentDE <- function(koalitionProb, predDate){
   data.frame(date_forecast = predDate,
              party_id = 1:6,

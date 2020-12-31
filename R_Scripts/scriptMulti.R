@@ -1,7 +1,7 @@
 library("lsTermElectionForecast")
 library("rstan")
 
-predDate <- as.Date("2017-03-25")
+predDate <- as.Date("2017-09-23")
 dataDE <- loadDataDE(predDate)
 dataPrep <- preparePollData(dataDE$pollData, dataDE$Elections, predDate)
 modelResults <- compileRunModel(dataPrep$modelData)

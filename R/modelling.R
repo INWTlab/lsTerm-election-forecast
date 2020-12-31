@@ -1,5 +1,5 @@
 #' @export
-compileRunModel <- function(data, iter = 600, warmup = 350,
+compileRunModel <- function(data, iter = 750, warmup = 400,
                             control = list(max_treedepth = 13, adapt_delta = 0.8),
                             chains = 4, cores = 4, seed = 12345){
   mpModel <- rstan::stan_model(file = "stan_models/lsModelMulti.stan")

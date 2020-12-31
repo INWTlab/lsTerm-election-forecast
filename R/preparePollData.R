@@ -60,7 +60,6 @@ preparePollData <- function(pollData, Elections, predDate,
   pos <- matrix(c(sapply(unique(allData2$party), function(x) which(allData2$party == x)[1]),
                   sapply(unique(allData2$party), function(x) max(which(allData2$party == x)))), ncol = 2)
   #create matrix of government parties
-  source('R/createGovMatrix.R', encoding = 'UTF-8')
   govMatrix <- createGovMatrix(partyNames, YTOTAL, Elections, timeSeq)
   
   #indicator of weeks of state-space time sequence with election week

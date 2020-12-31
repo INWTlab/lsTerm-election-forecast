@@ -18,6 +18,10 @@ plotElectionData <- function(modelResults, data, predDate,
   partyColors <- c("dodgerblue4", "black", "yellow", "green", "purple", "red")
   
   
+  
+  plotPollData <- data$plotPollData %>% select(Datum, "CDU/CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AfD") %>%
+    as_tibble %>% gather(key = "party", value = "proportion", -Datum)
+  
   g <- ggplot(data = plotData, aes(x = time, y = estimate, group = party,
                                    colour = party)) + geom_line() + 
     geom_ribbon(aes(ymin = lower, ymax = upper,
@@ -29,7 +33,8 @@ plotElectionData <- function(modelResults, data, predDate,
     annotate(geom = "text", x=as.POSIXct(predDate), y=0.02,
              label="prediction date", angle = 25, size = 2) +
     annotate(geom = "text", x=as.POSIXct(end),
-             y=0, label="election date", angle = 25, size = 2)
+             y=0, label="election date", angle = 25, size = 2) + 
+    geom_point(data = plotPollData, aes(x = as.POSIXct(Datum), y = proportion, group = party), alpha = 0.3)
   
   parties = c("CDU/CSU", "SPD", "GRÜNE", "LINKE", "FDP", "AfD")
   colourList = list(c(50,48,46), c(227, 0, 15), c(100, 161, 45), 
