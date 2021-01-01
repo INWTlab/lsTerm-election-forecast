@@ -460,12 +460,14 @@ In the meantime, the uplift in vote share for the SPD has vanished almost comple
 Lastly, a closer look at the day before the election is taken:
 \medskip
 ```{r day prior election, warning=FALSE, echo = TRUE, message=FALSE}
-# predDate <- as.Date("2017-09-23")
-# dataDE <- loadDataDE(predDate)
-# dataPrep <- preparePollData(dataDE$pollData, dataDE$Elections, predDate)
+predDate <- as.Date("2017-09-23")
+dataDE <- loadDataDE(predDate)
+dataPrep <- preparePollData(dataDE$pollData, dataDE$Elections, predDate)
 # modelResults <- compileRunModel(dataPrep$modelData)
-# plotForecast <- plotElectionData(modelResults, dataPrep, predDate,
-#                                  dataDE$pollData, start = "2016-01-01")
+load("model_results/modelResults_230917.Rdata")
+plotForecast <- plotElectionData(modelResults, dataPrep, predDate,
+                                 dataDE$pollData, start = "2016-01-01")
+plotForecast$plot
 ```
 The CDU/CSU lost some vote share, while the AfD gained quite a bit, confirming the estimated trend from the model above. 
 
@@ -518,7 +520,7 @@ ggplot(longData %>% filter(Method %in% c("Bayes", "Min", "Best")),
 #average over all time points
 round(colMeans(predictivePerformance[,-1]), 3)
 ```
-The proposed Bayesian long-short term memory state-space model was able to beat a poll average by 15% on average over the year prior to election, and by almost 20% compared to the most recent poll. It even turned out to beat the best pollster for this particular election -- which is only available in hindsight -- and is on par with best pollster for each point in time, a remarkable result. Similar results are obtained when applying the model on the previous 2013 election.
+The proposed Bayesian long-short term memory state-space model was able to beat a poll average by 15% on average over the year prior to election, and by almost 20% compared to the most recent poll. It even turned out to beat the best pollster for this particular election -- which is only available in hindsight -- and is almost on par with best pollster for each point in time, a remarkable result. Similar results are obtained when applying the model on the previous 2013 election.
 \bigskip
 
 ## Troubleshooting
