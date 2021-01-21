@@ -80,7 +80,7 @@ eventsDE <- function(modelResults, data, predDate){
                ((electionForecast %>% select("SPD") %>% rowSums() > 0.3) %>% sum) / nrow(electionForecast),
                ((electionForecast %>% select("SPD") %>% rowSums() < 0.2) %>% sum) / nrow(electionForecast),
                ((electionForecast %>% select("SPD") %>% rowSums() > electionForecast %>% select("CDU/CSU") %>% rowSums()) %>% sum) / nrow(electionForecast),
-               sum(apply(bundestag, 1, function(x) order(x)[3]) == which(colnames(bundestag) == "AfD")) / nrow(bundestag),
+               sum(apply(bundestag, 1, function(x) order(x, decreasing = TRUE)[3]) == which(colnames(bundestag) == "AfD")) / nrow(bundestag),
                sum(apply(bundestag, 1, function(x) sum(x > 0) == 6)) / nrow(bundestag)
              )
   )
