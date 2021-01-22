@@ -5,8 +5,7 @@
  
  This repository provides the code of our election forecast predictions published on **[www.wer-gewinnt-die-wahl.de](https://www.wer-gewinnt-die-wahl.de)** using a dynamic multilevel Bayesian model written in _R_ and _Stan_.
 
-Model
-========================
+### Model
 
 Improving on our [2017 Bundestagswahl forecasting](https://www.inwt-statistics.de/blog-artikel-lesen/wahlprognose-fuer-die-bundestagswahl-2017.html), our model this year uses a _Long-short term memory state-space model for election forecasting_ ([Groß, 2019](https://zenodo.org/record/3697270)). The model simulates election outcomes by using poll, election and government data, applies a long-short-term voter memory state-space model and accounts for different sources of uncertainties. 
 
@@ -33,8 +32,7 @@ Our model
 
 For a more detailed overview on model specifiations and performance take a look at [this](https://github.com/INWTlab/lsTerm-election-forecast/blob/master/Poster/190820_Poster_StanCon_2019a.pdf) Stan conference poster. 
 
-Data
-=====
+### Data
 
 Our model uses three different types of input data:
 
@@ -47,9 +45,7 @@ Our model uses three different types of input data:
 3. **Expert interviews**: the model also makes use of expert interviews, that reflect expert opinions regarding coalition preferences of the parties. Experts are defined as political scientists or people working for a party / a party affiliated foundation. A list of potential coalitions was given to the experts, then the experts ranked these coalitions under the premise of independence from potential election results or actual polling. Up to date, the model considers [16 interview responses with 12 rankings](https://github.com/INWTlab/lsTerm-election-forecast/blob/master/data/Koalitionen_read.csv). This data also provides critical priors for our Bayesian workflow. For more detailed methodology, please read the [methods](https://github.com/INWTlab/lsTerm-election-forecast/blob/master/Notebook/notebook.pdf) section.
 
 
-How to run the model
-=====================
-
+### How to run the model
 
 `dataDE <- loadDataDE(predDate)` 
 > `returns` list of poll data, elections data, and coalition data 
@@ -99,7 +95,6 @@ fact_part_of_government <- partOfGovernmentDE(fact_coalition_prob, predDate)
 
 A more detailed tutorial on how to run the model can be found [here](https://github.com/INWTlab/lsTerm-election-forecast/blob/master/Notebook/notebook.pdf).
 
-Licence 
-========
+# Licence 
 
 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode)
