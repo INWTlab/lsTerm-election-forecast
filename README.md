@@ -28,12 +28,10 @@ We also categorized sources of uncertainty in forecasting vote share into two ty
 Our model
 
 - outperforms poll averages by around 15 %,
-
 - delivers an accurate statement about the uncertainty of our forecasts,
-
 - extends forecasting to events that describe the likelihood of government coalitions or government participation of individual parties.
 
-For a more detailed overview on model specifiations and performance take a look at [this](https://github.com/INWTlab/lsTerm-election-forecast/blob/master/Poster/190820_Poster_StanCon_2019a.pdf) Poster. 
+For a more detailed overview on model specifiations and performance take a look at [this](https://github.com/INWTlab/lsTerm-election-forecast/blob/master/Poster/190820_Poster_StanCon_2019a.pdf) Stan conference poster. 
 
 Data
 =====
