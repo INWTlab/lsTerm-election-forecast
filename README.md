@@ -11,7 +11,7 @@ Improving on our [2017 Bundestagswahl forecasting](https://www.inwt-statistics.c
 
 For press coverage of our 2017 forecast, please refer to these articles on [_Die Welt_](https://www.welt.de/politik/deutschland/article163306730/Diese-Spezial-Analyse-sieht-einen-klaren-Wahlsieger-in-Deutschland.html), the [_New York Times_](https://www.nytimes.com/2017/09/18/world/europe/germany-election-martin-schulz.html), and [Sueddeutsche](https://www.sueddeutsche.de/digital/wahlprognosen-der-naechste-bundeskanzler-wird-1.3584122)_._ 
 
-State-space models are common choices for modelling voting intentions using poll data. For the 2021 Bundestagswahl, we are going beyond the random-walk approaches by introducing the _long-short term event memory effect method_. Because vote shares tend to reverse back to the party’s long-term trend after larger short-term movements, we hypothesize that events influencing the vote share can be decomposed into:
+State-space models are common choices for modelling voting intentions using poll data. For the 2021 Bundestagswahl, we are going beyond the random-walk approaches by introducing a _long-short term event memory effect approach_. Because vote shares tend to reverse back to the party’s long-term trend after larger short-term movements, we hypothesize that events influencing the vote share can be decomposed into:
 
 * a short-term effect due to media information spreading,
 * a smaller remaining long-term effect e.g. new events and ‘forgetfulness’.
