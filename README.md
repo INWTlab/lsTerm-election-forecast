@@ -30,7 +30,7 @@ Our model
 - delivers an accurate statement about the uncertainty of our forecasts,
 - extends forecasting to events that describe the likelihood of government coalitions or government participation of individual parties.
 
-For a more detailed overview on model specifiations and performance take a look at [this](https://github.com/INWTlab/lsTerm-election-forecast/blob/master/Poster/190820_Poster_StanCon_2019a.pdf) Stan conference poster. 
+A detailed description of model specifications and performance can be found [here](https://github.com/INWTlab/lsTerm-election-forecast/blob/master/Notebook/notebook.pdf). For quick reference and overview, check out [this](https://github.com/INWTlab/lsTerm-election-forecast/blob/master/Poster/190820_Poster_StanCon_2019a.pdf) poster presented at the Stan 2019 conference, where we first introduced our model. Please note that the poster refers to an older version of the model. Since then, we have added a few more features.
 
 ### Data
 
