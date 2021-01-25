@@ -1,7 +1,7 @@
 2021 German Federal Election Forecasting Model
 ===============================================
 
- With the German federal election (_Bundestagswahl_) approaching in September 2021, [INWT-Statistics](https://www.inwt-statistics.com/home.html) aims to build a comprehensive model that forecasts the _Bundestagswahl_ outcomes. 
+ With the German federal election (_Bundestagswahl_) approaching in September 2021, [INWT-Statistics](https://www.inwt-statistics.com/home.html) aims to build a comprehensive model that forecasts the _Bundestagswahl_ results. 
  
  This repository provides the code of our election forecast predictions published on **[www.wer-gewinnt-die-wahl.de](https://www.wer-gewinnt-die-wahl.de)** using a dynamic multilevel Bayesian model written in _R_ and _Stan_.
 
