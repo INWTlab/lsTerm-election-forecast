@@ -47,51 +47,56 @@ Our model uses three different types of input data:
 
 ### How to run the model
 
-`dataDE <- loadDataDE(predDate)` 
-> `returns` list of poll data, elections data, and coalition data 
-- `predDate`:: the date of running the model e.g. as.Date(&quot;yyyy-mm-dd&quot;)
+### How to run the model
 
-`dataPrep <- preparePollData(dataDE$pollData, dataDE$Elections, predDate)`
-> `returns` a list of cleaned data sets ready for modeling
-- `dataDE$pollData` :: contains the imported polls data from the directory
-- `dataDE$Elections` :: contains the historical German elections results data
-- `predDate` :: date of running the model
+```R
+dataDE <- loadDataDE(predDate)
+# `returns` list of poll data, elections data, and coalition data 
+# `predDate`:: the date of running the model e.g. as.Date("yyyy-mm-dd")
 
-`modelResults <- compileRunModel(dataPrep$modelData)`
-> `returns` a list of stan models after sampling
-- `dataPrep$modelData` :: formatted cleaned data input resulted from previous `preparePollData` function
+dataPrep <- preparePollData(dataDE$pollData, dataDE$Elections, predDate)
+# `returns` a list of cleaned data sets ready for modeling
+# `dataDE$pollData` :: contains the imported polls data from the directory
+# `dataDE$Elections` :: contains the historical German elections results data
+# `predDate` :: date of running the model
 
-`plotForecast <- plotElectionData(modelResults, dataPrep, predDate, dataDE$pollData, start = "2016-01-01")`
-> `Returns` list of _ggplot_ graph, and JSON file output 
-- `modelResults` :: a list of model output of the function _compileRunModel()_
-- `dataPrep` :: output of the function _preparePollData()_
-- `predDate` :: date of running the model
-- `dataDE$pollData` :: contains the imported polls data from the directory
-- `start` :: date format &quot;yyyy-mm-dd&quot;
+modelResults <- compileRunModel(dataPrep$modelData)
+# `returns` a list of stan models after sampling
+# `dataPrep$modelData` :: formatted cleaned data input resulted from previous `preparePollData` function
 
-`fact_forecast <- getForecastTable(modelResults, dataPrep, predDate)`
-> `Returns` a table that contains each political party prediction forecasts
-- `modelResults`: a list of model output of the function _compileRunModel()_
-- `dataPrep`:: list of cleaned data sets ready for modeling from _preparePollData()_
-- `predDate`:: date of running the model, as.Date(&quot;yyyy-mm-dd&quot;)
+plotForecast <- plotElectionData(modelResults, dataPrep, predDate, dataDE$pollData, start = "2016#01#01")
+# `Returns` list of _ggplot_ graph, and JSON file output 
+# `modelResults` :: a list of model output of the function _compileRunModel()_
+# `dataPrep` :: output of the function _preparePollData()_
+# `predDate` :: date of running the model
+# `dataDE$pollData` :: contains the imported polls data from the directory
+# `start` :: date format "yyyy-mm-dd"
 
-`fact_event_prob <- eventsDE(modelResults, dataPrep, predDate)`
-> `Returns` a dataframe of events taking in consideration election forecasts
-- `modelResults`: a list of model output of the function _compileRunModel()_
-- `dataPrep`:: list of cleaned data sets ready for modeling from _preparePollData()_
-- `predDate`:: date of running the model, as.Date(&quot;yyyy-mm-dd&quot;)
+fact_forecast <- getForecastTable(modelResults, dataPrep, predDate)
+# `Returns` a table that contains each political party prediction forecasts
+# `modelResults`: a list of model output of the function _compileRunModel()_
+# `dataPrep`:: list of cleaned data sets ready for modeling from _preparePollData()_
+# `predDate`:: date of running the model, as.Date("yyyy-mm-dd")
+
+fact_event_prob <- eventsDE(modelResults, dataPrep, predDate)
+# `Returns` a dataframe of events taking in consideration election forecasts
+# `modelResults`: a list of model output of the function _compileRunModel()_
+# `dataPrep`:: list of cleaned data sets ready for modeling from _preparePollData()_
+# `predDate`:: date of running the model, as.Date("yyyy-mm-dd")
 
 fact_coalition_prob <- koalitionDE(dataDE$Koalitionen, modelResults, dataPrep, predDate)
-> `Returns` dataframe of political party coalitions possible estimates 
-- `dataDE$Koalitionen`:: dataframe from function _loadDataDE(predDate)_
-- `modelResults`:: a list of model output of the function _compileRunModel()_
-- `dataPrep`:: list of cleaned data sets ready for modeling from _preparePollData()_
-- `predDate`:: date of running the model, as.Date(&quot;yyyy-mm-dd&quot;)
+# `Returns` dataframe of political party coalitions possible estimates 
+# `dataDE$Koalitionen`:: dataframe from function _loadDataDE(predDate)_
+# `modelResults`:: a list of model output of the function _compileRunModel()_
+# `dataPrep`:: list of cleaned data sets ready for modeling from _preparePollData()_
+# `predDate`:: date of running the model, as.Date("yyyy-mm-dd")
 
 fact_part_of_government <- partOfGovernmentDE(fact_coalition_prob, predDate)
-> `Returns` dataframe of sum estimates of the different possibilities of coalitions
-- `fact_coalition_prob` :: dataframe that contains party coalition estimates
-- `predDate` :: date of running the model, as.Date(&quot;yyyy-mm-dd&quot;)
+# `Returns` dataframe of sum estimates of the different possibilities of coalitions
+# `fact_coalition_prob` :: dataframe that contains party coalition estimates
+# `predDate` :: date of running the model, as.Date("yyyy-mm-dd")
+```
+
 
 A more detailed tutorial on how to run the model can be found [here](https://github.com/INWTlab/lsTerm-election-forecast/blob/master/Notebook/notebook.pdf).
 
