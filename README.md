@@ -47,8 +47,6 @@ Our model uses three different types of input data:
 
 ### How to run the model
 
-### How to run the model
-
 ```R
 dataDE <- loadDataDE(predDate)
 # `returns` list of poll data, elections data, and coalition data 
