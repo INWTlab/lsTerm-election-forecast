@@ -7,7 +7,7 @@
 
 ### Model
 
-Improving on our [2017 Bundestagswahl forecasting](https://www.inwt-statistics.de/blog-artikel-lesen/wahlprognose-fuer-die-bundestagswahl-2017.html), our model this year uses a _Long-short term memory state-space model for election forecasting_ ([Groß, 2019](https://zenodo.org/record/3697270)). The model simulates election outcomes by using poll, election and government data, applies a long-short-term voter memory state-space model and accounts for different sources of uncertainties. 
+Improving on our [2017 Bundestagswahl forecasting](https://www.inwt-statistics.com/read-blog/forecast-2017-bundestag-election.html), our model this year uses a _Long-short term memory state-space model for election forecasting_ ([Groß, 2019](https://zenodo.org/record/3697270)). The model simulates election outcomes by using poll, election and government data, applies a long-short-term voter memory state-space model and accounts for different sources of uncertainties. 
 
 For press coverage of our 2017 forecast, please refer to these articles on [_Die Welt_](https://www.welt.de/politik/deutschland/article163306730/Diese-Spezial-Analyse-sieht-einen-klaren-Wahlsieger-in-Deutschland.html), the [_New York Times_](https://www.nytimes.com/2017/09/18/world/europe/germany-election-martin-schulz.html), and [Sueddeutsche](https://www.sueddeutsche.de/digital/wahlprognosen-der-naechste-bundeskanzler-wird-1.3584122)_._ 
 
