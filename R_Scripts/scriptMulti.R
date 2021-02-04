@@ -10,6 +10,6 @@ plotForecast <- plotElectionData(modelResults, dataPrep, predDate,
 plotForecast[[1]]
 fact_forecast <- getForecastTable(modelResults, dataPrep, predDate)
 fact_event_prob <- eventsDE(modelResults, dataPrep, predDate)
-fact_coalition_prob <- koalitionDE(dataDE$Koalitionen, modelResults, dataPrep, predDate)
+fact_coalition_prob <- koalitionDE(dataDE$Koalitionen, modelResults, dataPrep, predDate, expertUncertainty = TRUE)
 fact_part_of_government <- partOfGovernmentDE(fact_coalition_prob, predDate)
 

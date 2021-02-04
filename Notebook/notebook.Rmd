@@ -1,7 +1,7 @@
 ---
 title: "A long-short term event memory state-space model for multi-party elections"
 author: "Marcus Groß"
-date: '2020-12-30'
+date: '2021-02-04'
 output:
   pdf_document: default
   html_document:
@@ -74,7 +74,8 @@ dateSeq <- seq(min(pollDataShock$Datum), max(pollDataShock$Datum) , by = "week")
 smoothProportions <- sapply(colnames(pollDataShock)[3:7],
                             function(y){ 
                               sSpline <- smooth.spline(x = as.numeric(pollDataShock$Datum),
-                                                       y = unlist(pollDataShock[,y]), cv = TRUE, nknots = 1000)
+                                                       y = unlist(pollDataShock[,y]),
+                                                       cv = TRUE, nknots = 1000)
                               predict(sSpline, x = as.numeric(dateSeq))$y
                             })
 
@@ -110,7 +111,8 @@ The second point can be further split in three sources:
 The first source in particular is often completely ignored, and is also challenging to estimate. To illustrate, a look at the final polls just before the 2005 election and its outcome is taken:
 \medskip
 ```{r common bias, warning=FALSE, echo = TRUE, message=FALSE}
-knitr::kable(head(dataDE$pollData %>% arrange(desc(Datum)) %>% filter(Datum < as.Date("2005-09-18"))))
+knitr::kable(head(dataDE$pollData %>% arrange(desc(Datum)) %>% 
+                    filter(Datum < as.Date("2005-09-18"))))
 knitr::kable(Elections %>% filter(Year == 2005))
 ```
 
@@ -485,8 +487,9 @@ ggplot(goData, aes(estimate, colour= status, fill = status)) + geom_density(alph
 The model allows us to also look at the "house bias" , i.e. the bias of a pollster on a specific party or the polling uncertainty. In the example of the "Allensbach" pollster, one sees that this pollster strongly favors the FDP:
 \medskip
 ```{r house bias, warning=FALSE, echo = TRUE, message=FALSE}
-biasAllensbach <- modelResults$samples$housebias[, grep("Allensbach",
-                                                       colnames(dataPrep$modelData$IMatrix))]
+biasAllensbach <- 
+  modelResults$samples$housebias[, grep("Allensbach",
+                                        colnames(dataPrep$modelData$IMatrix))]
 colnames(biasAllensbach) <- dataPrep$parties
 boxplot(biasAllensbach, xlab = "Party", ylab = "Bias (logit-scale)",
         main = "House bias of pollster 'Allensbach'")
@@ -550,12 +553,28 @@ Now, for each scenario the, say 20, expert rankings are considered. The possible
 
 Thus, for coalition A+B the total probability is (10 * 100\% + 15 * 15\%) / 100 = 2.25\%. For coalition A+C, it computes to 15 * 85\% + 25 * 100\%) / 100 = 37.75\%, for 'coalition' A (60 * 100\%) / 100 = 60\% and for coalition A+B+C 0\%.
 
-To keep the Bayesian workflow, a dirichlet prior was chosen with all $\alpha_k$ set to 0.5, which changes the results slightly. Another small change to the setting described above was to introduce senior and junior partners, e.g. in the upper example for coalition A+B the expert were given two choices, namely with A as senior partner and B as senior partner, who provide the chancellor in each case. As (at least in Germany) there is an unwritten rule that the party with the most votes provides the chancellor, both coalitions rule out each other and the ranking between them is irrelevant. With this assumption one can also estimate the probability for a certain person being chancellor. In general, as coalition majorities are negatively correlated (e.g. A+B and C+D cannot have a majority at the same time), usually a low double-digit sample of experts already leads to high certainty in probability estimates. Besides the most voted party providing the chancellor, another assumption that is made concerns minority governments, which are ruled out. These are completely unusual in Germany (both on federal and state level), but for other countries with similar election system not unheard of and would require non-trivial model adjustments.
+To keep the Bayesian workflow, a dirichlet prior was chosen with all $\alpha_k$ set to 0.5 ('non-informative' Jeffrey's prior), which changes the results slightly. Another small change to the setting described above was to introduce senior and junior partners, e.g. in the upper example for coalition A+B the expert were given two choices, namely with A as senior partner and B as senior partner, who provide the chancellor in each case. As (at least in Germany) there is an unwritten rule that the party with the most votes provides the chancellor, both coalitions rule out each other and the ranking between them is irrelevant. With this assumption one can also estimate the probability for a certain person being chancellor. In general, as coalition majorities are negatively correlated (e.g. A+B and C+D cannot have a majority at the same time), usually a low double-digit sample of experts already leads to high certainty in probability estimates. Besides the most voted party providing the chancellor, another assumption that is made concerns minority governments, which are ruled out. These are completely unusual in Germany (both on federal and state level), but for other countries with similar election system not unheard of and would require non-trivial model adjustments.
+
+The approach explained above only considers the variation between experts but ignores the uncertainty within a single expert. More specifically, we assume that an expert is 100% sure, that coalition A+B will be chosen instead of coalition A+C if he ranked A+B above A+C. In reality he might only expect that to be case with a probability of 70%, 80% or 90%. To incorporate this uncertainty, we additionally model the expert's judgement and sample repeatedly afterwards from it. How does this work in our example? Say in one of our parliament set share simulation, coalitions A+B, A+C and A+B+C (scenario 2. avobe) have a majority. As a prior -- from a single expert view-- for the chance that a specific coalition is selected we again use the dirichlet distribution with all $\alpha_k$ set to 0.5 ('non-informative' Jeffrey's prior). When we incorporate the ranking, i.e. the knowledge that P(A+B) > P(A+C) > P(A+B+C), our posterior is a restricted dirichlet distribution. To sample from it, we can just sample from a standard dir(0.5, 0.5, 0.5) and order by the returned samples. That gives us probabilities of ca. 70.1\% for coalition A+B, 23.5\% for coalition A+C and 6.4\% for coalition A+B+C. However, we impose a second restriction: If there is coalition with less parties possible (i.e. having majority), the probability of the coalition having a higher number of parties is set to 0. In our example we set P(A+B+C) to 0, as we already have two coalitions with a parliament majority that have less parties and which are all included within the three-party coalition. This would of course not apply when we have the choice between e.g. A+B and A+C+D. Coming back to our example, we then have probabilities of 81.9\% for A+B and 18.1\% for A+C.
 
 The package includes a function with pre-defined coalitions to compute their probabilities. The big coalition (CDU/CSU + SPD) got by far the highest probability assigned (and eventually became government after election):
 
 ```{r coalitions eval, warning=FALSE, echo = TRUE, message=FALSE}
 fact_coalition_prob <- koalitionDE(dataDE$Koalitionen, modelResults, dataPrep, predDate)
+coalition_parties <- c("CDU/CSU - SPD", "SPD - Linke - Grüne", "SPD - FDP-Grüne",
+                "CDU/CSU - Grüne", "SPD - Grüne", "SPD - CDU/CSU", 
+                "CDU/CSU - FDP", "CDU/CSU - FDP - Grüne", "Grüne - SPD",
+                "Grüne - SPD - Linke", "Grüne - SPD - FDP", "Grüne - CDU/CSU")
+fact_coalition_prob$coalition_parties <- coalition_parties
+knitr::kable(fact_coalition_prob[, c(1, 4, 3)])
+```
+
+
+With including the expert uncertainty extension, we get a bit more balanced, but overall very similar results:
+
+```{r coalitions2 eval, warning=FALSE, echo = TRUE, message=FALSE}
+fact_coalition_prob <- koalitionDE(dataDE$Koalitionen, modelResults, dataPrep, predDate,
+                                   expertUncertainty = TRUE)
 coalition_parties <- c("CDU/CSU - SPD", "SPD - Linke - Grüne", "SPD - FDP-Grüne",
                 "CDU/CSU - Grüne", "SPD - Grüne", "SPD - CDU/CSU", 
                 "CDU/CSU - FDP", "CDU/CSU - FDP - Grüne", "Grüne - SPD",

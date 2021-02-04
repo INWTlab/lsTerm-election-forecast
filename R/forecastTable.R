@@ -65,7 +65,8 @@ eventsDE <- function(modelResults, data, predDate){
              #           "SPD stärker als CDU/CSU",
              #           "AfD wird drittstärkste Fraktion",
              #           "Sechs Fraktionen im Bundestag vertreten"),
-             event_id = 1:15,
+             #           "Grüne stärker als SPD"),
+             event_id = 1:16,
              estimate = c(
                (bundestag %>% filter((SPD + GRÜNE + LINKE) > 0.5) %>% nrow) / nrow(bundestag),
                ((bundestag %>% select("CDU/CSU", "FDP") %>% rowSums() > 0.5) %>% sum) / nrow(bundestag),
@@ -81,12 +82,13 @@ eventsDE <- function(modelResults, data, predDate){
                ((electionForecast %>% select("SPD") %>% rowSums() < 0.2) %>% sum) / nrow(electionForecast),
                ((electionForecast %>% select("SPD") %>% rowSums() > electionForecast %>% select("CDU/CSU") %>% rowSums()) %>% sum) / nrow(electionForecast),
                sum(apply(bundestag, 1, function(x) order(x, decreasing = TRUE)[3]) == which(colnames(bundestag) == "AfD")) / nrow(bundestag),
-               sum(apply(bundestag, 1, function(x) sum(x > 0) == 6)) / nrow(bundestag)
+               sum(apply(bundestag, 1, function(x) sum(x > 0) == 6)) / nrow(bundestag),
+               sum((electionForecast %>% select("GRÜNE") %>% rowSums()) > (electionForecast %>% select("SPD") %>% rowSums())) / nrow(electionForecast)
              )
   )
 }
 #' @export
-koalitionDE <- function(koaldata, modelResults, data, predDate){
+koalitionDE <- function(koaldata, modelResults, data, predDate, expertUncertainty = FALSE){
   # koalitionenRankings <- prepareKoalitionData(koaldata)
   
   electionForecast <- modelResults$samples$yFinal[,,1 + which(data$timeSeq == 
@@ -114,8 +116,75 @@ koalitionDE <- function(koaldata, modelResults, data, predDate){
                         coalition_id_10 = (bundestag$SPD < bundestag$GRÜNE) & (bundestag$LINKE + bundestag$SPD + bundestag$GRÜNE > 0.5),
                         coalition_id_11 = (bundestag$SPD < bundestag$GRÜNE) & (bundestag$FDP + bundestag$SPD + bundestag$GRÜNE > 0.5),
                         coalition_id_12 = (bundestag$`CDU/CSU` < bundestag$GRÜNE) & (bundestag$`CDU/CSU` + bundestag$GRÜNE > 0.5))
+  koalSim <- koalSim[rowSums(koalSim) > 0, ]
   
-  KoalitionenProp <- matrix(0, ncol = ncol(koalSim), nrow=nrow(koalSim))
+  if (expertUncertainty) {
+    koalSim <- koalSim[do.call(order, koalSim), ]
+    uniqueKoalSim <- unique(koalSim)
+    superiorCoalitions <- list(c(), c(5, 9), c(5, 9), c(), c(), c(), c(), c(7, 4), c(), c(5, 9), c(5, 9), c())
+    
+    uniqueCombs <- table(do.call(paste, koalSim))
+    KoalitionenProp <-
+      matrix(0, ncol = ncol(koalSim), nrow = length(uniqueCombs))
+    colnames(KoalitionenProp) <- names(koalSim)
+    
+    rdirichlet <- function (n, alpha) {
+      l <- length(alpha)
+      x <- matrix(rgamma(l * n, alpha), ncol = l, byrow = TRUE)
+      sm <- x %*% rep(1, l)
+      x / as.vector(sm)
+    }
+    
+    results <- sapply(1:nrow(KoalitionenProp), function(i) {
+      sumPostDraws <-   rowSums(sapply(1:nrow(koaldata), function(l) {
+        res <- KoalitionenProp[i,]
+        matching <- which(as.logical(uniqueKoalSim[i, ]))
+        Knames <-
+          as.integer(koaldata[l,][sort(match(matching, koaldata[l,]))])
+        if (length(Knames) > 1) {
+          rand <-
+            rowMeans(apply(rdirichlet(1000, rep(
+              0.5, length(Knames)
+            )), 1, sort, decreasing = T))
+          res[Knames] <- rand
+        } else {
+          res[Knames] <- 1
+        }
+        res
+      }))
+      #apply Jeffreys dir(alpha=0.5) prior
+      sumPostDraws[sumPostDraws > 0] <-
+        sumPostDraws[sumPostDraws > 0] + 0.5
+      #multiply by number of observed simulations
+      sumPostDraws
+    })
+    
+    #apply restriction on superior coalitions (two-partner always preferred before three partner if contains all two-partner parties)
+    for (i in 1:ncol(results)) {
+      for (j in 1:nrow(results)) {
+        if (results[j, i] > 0 &
+            any(results[superiorCoalitions[[j]], i] > 0)) {
+          results[j, i] <- 0
+        }
+      }
+    }
+    
+    results <- sweep(results, 2,  colSums(results), "/")
+    
+    results <- sweep(results, 2,  uniqueCombs, "*")
+    
+    results <- rowSums(results)
+    KoalitionenProp <- round(results / sum(results), 3)
+    
+    return(
+      data.frame(
+        date_forecast = predDate,
+        coalition_id = 1:ncol(koalSim),
+        estimate = KoalitionenProp
+      )
+    )
+  } else {
+    KoalitionenProp <- matrix(0, ncol = ncol(koalSim), nrow=nrow(koalSim))
   colnames(KoalitionenProp) <- names(koalSim)
   for(i in 1:nrow(koalSim)){
     Knames <- which(koalSim[i,]  == TRUE)
@@ -125,10 +194,11 @@ koalitionDE <- function(koaldata, modelResults, data, predDate){
   }
   KoalitionenProp <- KoalitionenProp %>% colMeans %>% round(3)
   
-  data.frame(date_forecast = predDate,
+  return(data.frame(date_forecast = predDate,
              coalition_id = 1:ncol(koalSim),
              estimate = KoalitionenProp
-  )
+  ))
+  }
 }
 #' @export
 partOfGovernmentDE <- function(koalitionProb, predDate){
