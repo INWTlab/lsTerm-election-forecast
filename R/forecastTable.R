@@ -21,7 +21,7 @@ getForecastTable <- function(modelResults, data, predDate){
                                                                                                                                                              units = "weeks"))))] %>%
                                                                                                 logistic, 2, quantile, c(0.025, 0.975)) %>% round(3) %>% t))
   
-  forecastNow <- data.frame(date_forecast = predDate, type = "next_sunday", party_id = parties, cbind(as.matrix(modelResults$samples$y[,,which(data$timeSeq == 
+  forecastNow <- data.frame(date_forecast = predDate, type = "next_sunday", party_id = parties, cbind(as.matrix(modelResults$samples$y[,,1 + which(data$timeSeq == 
                                                                                                                                                  floor(as.numeric(difftime(as.Date(predDate),
                                                                                                                                                                            as.Date("1970-01-04"),
                                                                                                                                                                            units = "weeks"))))] %>%
