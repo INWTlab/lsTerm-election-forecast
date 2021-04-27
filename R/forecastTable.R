@@ -204,10 +204,10 @@ koalitionDE <- function(koaldata, modelResults, data, predDate, expertUncertaint
 partOfGovernmentDE <- function(koalitionProb, predDate){
   data.frame(date_forecast = predDate,
              party_id = 1:6,
-             estimate = c(sum(koalitionProb[c(1, 4, 6, 7, 8),3]),
+             estimate = c(sum(koalitionProb[c(1, 4, 6, 7, 8, 12),3]),
                           sum(koalitionProb[c(1, 2, 3, 5, 6, 9, 10, 11),3]),
                           0,
-                          sum(koalitionProb[c(2, 3, 4, 5, 8, 9, 10),3]),
+                          sum(koalitionProb[c(2, 3, 4, 5, 8, 9, 10, 11, 12),3]),
                           sum(koalitionProb[c(2, 10),3]),
                           sum(koalitionProb[c(3, 7, 8, 11),3])))
 }
