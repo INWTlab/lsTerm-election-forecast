@@ -1,7 +1,7 @@
 Package: lsTermElectionForecast
 Type: Package
 Title: Forecast elections for multi-party-elections
-Version: 1.0.0
+Version: 1.0.1
 Author: person("Marcus", "Groß", email = "marcus.gross@inwt-statistics.de",
                   role = c("aut", "cre"))
 Description: Election forecast using poll data for german federal elections and other multi-party elections

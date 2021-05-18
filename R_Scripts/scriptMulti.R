@@ -1,5 +1,6 @@
 library("lsTermElectionForecast")
 library("rstan")
+library("rvest")
 
 predDate <- as.Date("2017-09-23")
 dataDE <- loadDataDE(predDate)
