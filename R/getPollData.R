@@ -27,19 +27,13 @@ getPollData <- function(dateMax = Sys.Date()) {
     allUrls <- x %>%
       read_html %>%
       html_nodes(., "p.navi a") %>%
-      xml_attr("href") %>%
-      # control for the case where there is only one table for an institute (i.e. insa)
-      {
-        ifelse(length(.) > 0, return(c(x, paste0(mainPage, .))), return(x))
-      }
+      xml_attr("href")
     
+    allUrls <- ifelse(length(allUrls) > 0, return(c(x, paste0(mainPage, allUrls))), return(x))
     # exclude urls refering to tables we do not need
-    paste(c("west", "ost", "stimmung"), collapse = "|") %>%
-      grep(., allUrls) %>%
-      {
-        ifelse(length(.) > 0, return(allUrls[-c(.)]), return(allUrls))
-      }
-    
+    allUrlsStripped <- grep(paste(c("west", "ost", "stimmung"), collapse = "|"), allUrls)
+    allUrls <- ifelse(length(allUrlsStripped) > 0, return(allUrls[-c(allUrlsStripped)]), return(allUrls))
+    return(allUrls)
   }
   
   completeUrlList <- urls %>% lapply(generateTableUrls)
