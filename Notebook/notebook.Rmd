@@ -564,7 +564,10 @@ fact_coalition_prob <- koalitionDE(dataDE$Koalitionen, modelResults, dataPrep, p
 coalition_parties <- c("CDU/CSU - SPD", "SPD - Linke - Grüne", "SPD - FDP-Grüne",
                 "CDU/CSU - Grüne", "SPD - Grüne", "SPD - CDU/CSU", 
                 "CDU/CSU - FDP", "CDU/CSU - FDP - Grüne", "Grüne - SPD",
-                "Grüne - SPD - Linke", "Grüne - SPD - FDP", "Grüne - CDU/CSU")
+                "Grüne - SPD - Linke", "Grüne - SPD - FDP", "Grüne - CDU/CSU", 
+                "Grüne - CDU/CSU - FDP", "CDU/CSU-SPD-FDP", "SPD - CDU/CSU - FDP",
+                "CDU/CSU - Grüne - SPD", "Grüne - CDU/CSU - SPD",
+                "SPD - CDU/CSU - Grüne")
 fact_coalition_prob$coalition_parties <- coalition_parties
 knitr::kable(fact_coalition_prob[, c(1, 4, 3)])
 ```
@@ -578,7 +581,10 @@ fact_coalition_prob <- koalitionDE(dataDE$Koalitionen, modelResults, dataPrep, p
 coalition_parties <- c("CDU/CSU - SPD", "SPD - Linke - Grüne", "SPD - FDP-Grüne",
                 "CDU/CSU - Grüne", "SPD - Grüne", "SPD - CDU/CSU", 
                 "CDU/CSU - FDP", "CDU/CSU - FDP - Grüne", "Grüne - SPD",
-                "Grüne - SPD - Linke", "Grüne - SPD - FDP", "Grüne - CDU/CSU")
+                "Grüne - SPD - Linke", "Grüne - SPD - FDP", "Grüne - CDU/CSU", 
+                "Grüne - CDU/CSU - FDP", "CDU/CSU-SPD-FDP", "SPD - CDU/CSU - FDP",
+                "CDU/CSU - Grüne - SPD", "Grüne - CDU/CSU - SPD",
+                "SPD - CDU/CSU - Grüne")
 fact_coalition_prob$coalition_parties <- coalition_parties
 knitr::kable(fact_coalition_prob[, c(1, 4, 3)])
 ```
