@@ -190,27 +190,29 @@ koalitionDE <- function(koaldata, modelResults, data, predDate, expertUncertaint
                           (bundestag$`GRÜNE` > 0) & (bundestag$`CDU/CSU` > 0) & (bundestag$`SPD` > 0))
   
   koalSim <- koalSim[rowSums(koalSim) > 0, ]
+  
+  superiorCoalitions <- list(c(),
+                             c(5),
+                             c(5),
+                             c(),
+                             c(),
+                             c(),
+                             c(),
+                             c(7, 4),
+                             c(),
+                             c(9),
+                             c(9),
+                             c(),
+                             c(12, 7),
+                             c(1, 7),
+                             c(6, 7),
+                             c(1, 4),
+                             c(12, 9),
+                             c(5, 6))
+  
   if (expertUncertainty) {
     koalSim <- koalSim[do.call(order, koalSim), ]
     uniqueKoalSim <- unique(koalSim)
-    superiorCoalitions <- list(c(),
-                               c(5),
-                               c(5),
-                               c(),
-                               c(),
-                               c(),
-                               c(),
-                               c(7, 4),
-                               c(),
-                               c(9),
-                               c(9),
-                               c(),
-                               c(12, 7),
-                               c(1, 7),
-                               c(6, 7),
-                               c(1, 4),
-                               c(12, 9),
-                               c(5, 6))
     
     uniqueCombs <- table(do.call(paste, koalSim))
     KoalitionenProp <-
@@ -314,6 +316,16 @@ koalitionDE <- function(koaldata, modelResults, data, predDate, expertUncertaint
         factor(levels = 1:length(Knames)) %>% table + 1/2
       KoalitionenProp[i, c(Knames)] = Counts/sum(Counts)
     }
+    
+    for (i in 1:ncol(KoalitionenProp)) {
+      for (j in 1:nrow(KoalitionenProp)) {
+        if (KoalitionenProp[j, i] > 0 &
+            any(KoalitionenProp[j, superiorCoalitions[[i]]] > 0)) {
+          KoalitionenProp[j, i] <- 0
+        }
+      }
+    }
+    KoalitionenProp <- sweep(KoalitionenProp, 1,  rowSums(KoalitionenProp), "/")
     KoalitionenProp <- KoalitionenProp %>% colMeans %>% round(3)
     
     return(data.frame(date_forecast = predDate,
