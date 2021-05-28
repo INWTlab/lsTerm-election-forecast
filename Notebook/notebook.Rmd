@@ -1,7 +1,7 @@
 ---
 title: "A long-short term event memory state-space model for multi-party elections"
 author: "Marcus Groß"
-date: '2021-02-04'
+date: '2021-05-17'
 output:
   pdf_document: default
   html_document:
@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Abstract
 
-State-space models are a popular choice for modelling voting intentions and election results using polling data. The presented multivariate state-space model attempts to go beyond random-walk or Kalman-filter approaches (with comparable performance to simple weighted survey averages) by introducing a long-short term event memory effect to the problem. This effect serves as a reasonable explanation for the observation that the vote share partially tends to reverse to the party's long-term trend after larger short-term movements. Any event influencing the vote share of a party is presumed to have a convex shape, and be decomposable into a short-term effect due to e.g. media spreading, and a smaller, long-term effect remaining despite overlay effects of new events and forgetfulness. This effect is modelled by a mixture of a random walk and two contrasting autoregressive processes. By also taking advantage of the widely-observed effect that government parties tend to fall in vote share, whereas the opposite effect is observed for opposition parties, mid- and long-term predictions of election outcomes can be considerably improved. The Stan-model is fitted and evaluated on polling data from seven pollsters of the German national elections ("Bundestagswahl") from 1994 to 2017, where low double-digit (out-of-sample) improvements in prediction performance can be seen between 3- and 18-months prior to the elections. By taking into account the pollsters' house effects, their poll errors, and even more importantly, their correlations in poll errors, an appropriate and realistic estimation error can be created. 
+State-space models are a popular choice for modeling voting intentions and election results using polling data. The presented multivariate state-space model attempts to go beyond random-walk or Kalman-filter approaches (with comparable performance to simple weighted survey averages) by introducing a long-short term event memory effect to the problem. This effect serves as a reasonable explanation for the observation that the vote share partially tends to reverse to the party's long-term trend after larger short-term movements. Any event influencing the vote share of a party is presumed to have a convex shape, and be decomposable into a short-term effect due to e.g. media spreading, and a smaller, long-term effect remaining despite overlay effects of new events and forgetfulness. This effect is modeled by a mixture of a random walk and two contrasting autoregressive processes. By also taking advantage of the widely-observed effect that government parties tend to fall in vote share, whereas the opposite effect is observed for opposition parties, mid- and long-term predictions of election outcomes can be considerably improved. The Stan-model is fitted and evaluated on polling data from seven pollsters of the German national elections ("Bundestagswahl") from 1994 to 2017, where low double-digit (out-of-sample) improvements in prediction performance can be seen between 3- and 18-months prior to the elections. By taking into account the pollsters' house effects, their poll errors, and even more importantly, their correlations in poll errors, an appropriate and realistic estimation error can be created. 
 \bigskip
 
 ## Data
@@ -59,7 +59,7 @@ FiveThirtyEight states that:
 >aggressive as Election Day approaches.
 
 
-There is some discussion in a 1993 paper by Andrew Gelman and Gary King on this issue (https://gking.harvard.edu/files/abs/variable-abs.shtml). In a 2013 paper by Drew Linzer (https://votamatic.org/wp-content/uploads/2013/07/Linzer-JASA13.pdf), a mean-reversion effect is incorporated for US Presidential elections by implicitely assuming that on the state level, the vote share is going to return to its long-term mean. However, such a form of mean stationarity is unrealistic, particularly in multi-party systems, as there are clear trends over time for different parties. For example, formerly successful parties can disappear entirely. Therefore, a mixture between a non-stationary random walk and a mean-reversing stationary process for the vote share over time is proposed.
+There is some discussion in a 1993 paper by Andrew Gelman and Gary King on this issue (https://gking.harvard.edu/files/abs/variable-abs.shtml). In a 2013 paper by Drew Linzer (https://votamatic.org/wp-content/uploads/2013/07/Linzer-JASA13.pdf), a mean-reversion effect is incorporated for US Presidential elections by implicitly assuming that on the state level, the vote share is going to return to its long-term mean. However, such a form of mean stationarity is unrealistic, particularly in multi-party systems, as there are clear trends over time for different parties. For example, formerly successful parties can disappear entirely. Therefore, a mixture between a non-stationary random walk and a mean-reversing stationary process for the vote share over time is proposed.
 
 How can this kind mean-reversion process be interpreted? The idea is to model this as a long-short term memory process. Assuming weekly data and weekly changes, it is stated that each shock, or change in voter's intention for a party, is attributable to events, e.g. political scandals, controversial  statements, or candidate selection. The initial shock, which can be positive or negative, is covered by the media in the following weeks, increasing the initial effect. After a few weeks the event or news might slowly disappear out of the public's mind, but won't entirely. The remaining effect accounts for the long-term effect of the initial event. 
 
@@ -85,7 +85,7 @@ plot(acfs, type = "h", xlab = "week after shock", ylab = "autocorrelation",
      main = "Aggregated empirical autocorrelation of differences")
 abline(h = 0)
 ```
-One can clearly see that there is a positive autocorrelation within the first weeks, turning negative after about 8 weeks after the initial shock. The first interval can be seen as a news / event spreading effect, where the initial impact is spilled over to the following weeks. The latter interval can be seen as the period where the events get out of the short-term public memory. A clearer picture of the mean-reversing nature of polls can be seen when  the autocorrelation function is integrated: 
+One can clearly see that there is a positive autocorrelation within the first weeks, turning negative after about 8 weeks after the initial shock. The first interval can be seen as a news / event spreading effect, where the initial impact is spilled over to the following weeks. The latter interval can be seen as the period where the events get out of the short-term public memory. A clearer picture of the mean-reversing nature of polls can be seen when the autocorrelation function is integrated: 
 \medskip
 ```{r plot integrated acfs, warning=FALSE, echo = TRUE, message=FALSE}
 plot(c(0,cumsum(acfs)), type = "l", xlab = "week after shock", ylab = "effect size",
@@ -106,7 +106,7 @@ The second point can be further split in three sources:
 
 1. The common bias of all pollsters for a specific party and and time point
 2. The (house) bias of a specific pollster for a specific party (and time point)
-3. The polling uncertainty of a specific pollster for a specific party
+3. The polling uncertainty of a specific pollster for a specific party (sampling error)
 
 The first source in particular is often completely ignored, and is also challenging to estimate. To illustrate, a look at the final polls just before the 2005 election and its outcome is taken:
 \medskip
@@ -127,7 +127,7 @@ For the third source, one may presume that the sample size ("Befragte" in the po
 To model the vote share over time a "long-short term memory" state-space model is implemented in *STAN*. It incorporates a parameterized long- and short-term memory structure based on weekly events or shocks, incorporates the party status (government or opposition), accounts for different sources of uncertainty (future events, common pollster error, pollster-party-house bias, polling uncertainty), and heavy-tail errors.
 
 Let $y_{party, t}$ be the true vote share for a specific party, $pt$ for a certain time point $t$, if an election would be held, whereby $t$ is indexed on a weekly basis. One cannot measure the vote share directly except on election days, so have to rely on polling data. The polling data $poll_{pt, t, pll}$ for a party $pt$, time point $t$ and pollster $pll$ is published in irregular intervals by different institutes or pollsters. The polling data and the election vote share were transformed on the logit scale to guarantee estimates in the (0, 1) interval after re-transformation, and to provide variance regulation: 
-$$logit(poll_{pt, t, pll}) \sim N(\mu_{pt, t, pll}\text{ , } \sigma^2_{pt,pll} + 2E-3)$$
+$$logit(poll_{pt, t, pll}) \sim N(\mu_{pt, t, pll}\text{ , } \sigma^2_{pt,pll} + 0.0002)$$
 
 The expectation of the transformed poll result corresponds to the vote share $y$ and three forms of biases:
 
@@ -144,12 +144,12 @@ $$\epsilon_{\text{pollError}_{pt, el}} \sim N(0, \sigma^2_{pt} \Sigma )$$
 The standard deviation of a poll is a product of a pollster factor with the party standard deviation:
 $$\sigma_{pt,pll}  =  \sigma_{pll} \sigma_{pt} $$
 
-For an election, pollster specific bias and variance is non-existent. The upper expression gets simplified to:
+For an election, pollster specific bias and variance is non-existent. The upper expression gets simplified to the one below. The small standard deviation is used to avoid problems with the sampler and can also be interpreted as counting error.
 
-$$logit(election_{pt, t}) \sim N(y_{pt, t}\text{ , } 2E-3)$$
+$$logit(election_{pt, t}) \sim N(y_{pt, t}\text{ , } 0.0002)$$
 
-The shifts in the common bias of the pollsters for all parties follow a multivariate t-distribution with 3.5 degrees of freedom and a standard deviation $\sigma_{\text{pollbias}}$ that is different for each party $pt$ multiplied by a correlation matrix $\Sigma_{shift}$:
-$$\epsilon_{\text{polls}_{pt, t}} \sim mvt(0, \sigma^2_{\text{pollbias}_{pt}} \Sigma_{shift}, df = 3.5)$$
+The shifts in the common bias of the pollsters for all parties follow a normal distribution with mean 0 and a standard deviation $\sigma_{\text{pollbias}}$ that is different for each party $pt$ multiplied by a correlation matrix $\Sigma_{shift}$:
+$$\epsilon_{\text{polls}_{pt, t}} \sim multi_normal(0, \sigma^2_{\text{pollbias}_{pt}} \Sigma_{shift})$$
 
 The true vote share $y_{pt, t}$ follows a random walk, but  with three additional terms $\nu_{pt, t}$, $\eta_{1, pt, t}$ and $\eta_{2, pt, t}$, the short and long-term memory effects:
 
@@ -157,7 +157,7 @@ $$y_{pt, t} = y_{pt, t-1} + \epsilon_{pt, t} + \nu_{pt, t} - \eta_{1, pt, t} - \
 
 The shocks in vote share follow $\epsilon_{pt, t}$ follow a multivariate t-distribution with 3.5 degrees of freedom and a standard deviation $\sigma_{\text{shift}_{pt}}$ that is different for each party $pt$ is multiplied by a correlation matrix. The expectation $\mu_{{eps}_{pt, t}}$ depends on the current state, i.e. state of being in government or opposition for the party.
 
-$$\epsilon_{pt, t} \sim t(\mu_{eps_{pt, t}}, \sigma_{\text{shift}_{pt}}\Sigma_{shift}, df = 3.5)$$
+$$\epsilon_{pt, t} \sim multi_t(\mu_{eps_{pt, t}}, \sigma_{\text{shift}_{pt}}\Sigma_{shift}, df = 3.5)$$
 As explained in the previous section, the expectation of the weekly shift in vote share might be influenced by whether a party is part of the government or the opposition.
 $$\mu_{{eps}_{pt, t}} = opposition_{pt,t} + government_{pt,t}$$
 
@@ -527,7 +527,7 @@ The proposed Bayesian long-short term memory state-space model was able to beat 
 \bigskip
 
 ## Troubleshooting
-The model iterations exceed maximum tree size, for tree_depth < 13. As each additional tree_depth increases the computation time about two-fold, this leads to slow computation. There were, very rarely, divergent samples. Therefore, the user might increase adapt_stepsize above the value of 0.8 in edge cases (the results are virtually identical, though). To allow for daily updates models has been running with rather low sample size (600 with 350 burn-in) in practice. For more precise results, multiple chains or longer sampling periods are desirable.
+The model iterations exceed maximum tree size, for tree_depth < 13. As each additional tree_depth increases the computation time about two-fold, this leads to slow computation. There were, very rarely, divergent samples. Therefore, the user might increase adapt_stepsize above the value of 0.8 in edge cases (the results are virtually identical, though). To allow for daily updates models has been running with rather low sample size (600 with 400 burn-in) with 5 chains in practice. For more precise results, more chains or longer sampling periods are desirable.
 \bigskip
 
 ## Government and Coalitions: Combining Results with Expert Data
@@ -555,7 +555,7 @@ Thus, for coalition A+B the total probability is (10 * 100\% + 15 * 15\%) / 100 
 
 To keep the Bayesian workflow, a dirichlet prior was chosen with all $\alpha_k$ set to 0.5 ('non-informative' Jeffrey's prior), which changes the results slightly. Another small change to the setting described above was to introduce senior and junior partners, e.g. in the upper example for coalition A+B the expert were given two choices, namely with A as senior partner and B as senior partner, who provide the chancellor in each case. As (at least in Germany) there is an unwritten rule that the party with the most votes provides the chancellor, both coalitions rule out each other and the ranking between them is irrelevant. With this assumption one can also estimate the probability for a certain person being chancellor. In general, as coalition majorities are negatively correlated (e.g. A+B and C+D cannot have a majority at the same time), usually a low double-digit sample of experts already leads to high certainty in probability estimates. Besides the most voted party providing the chancellor, another assumption that is made concerns minority governments, which are ruled out. These are completely unusual in Germany (both on federal and state level), but for other countries with similar election system not unheard of and would require non-trivial model adjustments.
 
-The approach explained above only considers the variation between experts but ignores the uncertainty within a single expert. More specifically, we assume that an expert is 100% sure, that coalition A+B will be chosen instead of coalition A+C if he ranked A+B above A+C. In reality he might only expect that to be case with a probability of 70%, 80% or 90%. To incorporate this uncertainty, we additionally model the expert's judgement and sample repeatedly afterwards from it. How does this work in our example? Say in one of our parliament set share simulation, coalitions A+B, A+C and A+B+C (scenario 2. avobe) have a majority. As a prior -- from a single expert view-- for the chance that a specific coalition is selected we again use the dirichlet distribution with all $\alpha_k$ set to 0.5 ('non-informative' Jeffrey's prior). When we incorporate the ranking, i.e. the knowledge that P(A+B) > P(A+C) > P(A+B+C), our posterior is a restricted dirichlet distribution. To sample from it, we can just sample from a standard dir(0.5, 0.5, 0.5) and order by the returned samples. That gives us probabilities of ca. 70.1\% for coalition A+B, 23.5\% for coalition A+C and 6.4\% for coalition A+B+C. However, we impose a second restriction: If there is coalition with less parties possible (i.e. having majority), the probability of the coalition having a higher number of parties is set to 0. In our example we set P(A+B+C) to 0, as we already have two coalitions with a parliament majority that have less parties and which are all included within the three-party coalition. This would of course not apply when we have the choice between e.g. A+B and A+C+D. Coming back to our example, we then have probabilities of 81.9\% for A+B and 18.1\% for A+C.
+The approach explained above only considers the variation between experts but ignores the uncertainty within a single expert. More specifically, we assume that an expert is 100% sure, that coalition A+B will be chosen instead of coalition A+C if he ranked A+B above A+C. In reality he might only expect that to be case with a probability of 70%, 80% or 90%. To incorporate this uncertainty, we additionally model the expert's judgement and sample repeatedly afterwards from it. How does this work in our example? Say in one of our parliament set share simulation, coalitions A+B, A+C and A+B+C (scenario 2. above) have a majority. As a prior -- from a single expert view-- for the chance that a specific coalition is selected we again use the dirichlet distribution with all $\alpha_k$ set to 0.3 (derived as optimal ML-value by analysis of previous expert survey and election results of the German election in 2017). When we incorporate the ranking, i.e. the knowledge that P(A+B) > P(A+C) > P(A+B+C), our posterior is a restricted dirichlet distribution. To sample from it, we can just sample from a standard dir(0.5, 0.5, 0.5) and order by the returned samples. That gives us probabilities of ca. 76.8\% for coalition A+B, 19.4\% for coalition A+C and 3.7\% for coalition A+B+C. However, we impose a second restriction: If there is coalition with less parties possible (i.e. having majority), the probability of the coalition having a higher number of parties is set to 0. In our example we set P(A+B+C) to 0, as we already have two coalitions with a parliament majority that have less parties and which are all included within the three-party coalition. This would of course not apply when we have the choice between e.g. A+B and A+C+D. Coming back to our example, we then have probabilities of 86.7\% for A+B and 13.3\% for A+C.
 
 The package includes a function with pre-defined coalitions to compute their probabilities. The big coalition (CDU/CSU + SPD) got by far the highest probability assigned (and eventually became government after election):
 
@@ -582,3 +582,6 @@ coalition_parties <- c("CDU/CSU - SPD", "SPD - Linke - Grüne", "SPD - FDP-Grün
 fact_coalition_prob$coalition_parties <- coalition_parties
 knitr::kable(fact_coalition_prob[, c(1, 4, 3)])
 ```
+
+
+It may also happen, that the voting share of the parties changes substantially after performing the expert survey and improbable coalitions now get somewhat conceivable. This could include a coalition such as CDU/CSU - SPD - FDP or CDU/CSU - Grüne - SPD for the German Bundestag elections. These can be incorporated by sampling their expert rank from an discrete uniform distribution. One can take advantage of the available expert data by restricting the range of ranks such that. For example, when considering the additional coalition CDU/CSU - Grüne - SPD, we can conclude that the rank must be larger than the rank of CDU/CSU - Grüne and CDU/CSU - SPD. This leads to higher uncertainties but avoids having to repeat the expert survey coupled with significant effort.
