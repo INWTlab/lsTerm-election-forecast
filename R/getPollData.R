@@ -24,18 +24,23 @@ getPollData <- function(dateMax = Sys.Date()) {
   # current data can be found in the table retrieved from 'urls', i.e.http://www.wahlrecht.de/umfragen/allensbach.htm
   # non-current tables contain the (latest) year in their url, i.e. http://www.wahlrecht.de/umfragen/allensbach/2002.htm
   generateTableUrls <- function(x) {
+    
     allUrls <- x %>%
       read_html %>%
       html_nodes(., "p.navi a") %>%
       xml_attr("href")
-    
-    allUrls <- ifelse(length(allUrls) > 0, return(c(x, paste0(mainPage, allUrls))), return(x))
+    if(length(allUrls) > 0){
+      allUrls <- c(x, paste0(mainPage, allUrls))
+    } else {
+      allUrls <- x
+    }
     # exclude urls refering to tables we do not need
     allUrlsStripped <- grep(paste(c("west", "ost", "stimmung"), collapse = "|"), allUrls)
-    allUrls <- ifelse(length(allUrlsStripped) > 0, return(allUrls[-c(allUrlsStripped)]), return(allUrls))
+    if(length(allUrlsStripped) > 0){
+      allUrls <- allUrls[-c(allUrlsStripped)]
+    }
     return(allUrls)
   }
-  
   completeUrlList <- urls %>% lapply(generateTableUrls)
   names(completeUrlList) <- institutes
   

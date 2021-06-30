@@ -19,7 +19,7 @@ plotElectionData <- function(modelResults, data, predDate,
   
   
   
-  plotPollData <- data$plotPollData %>% select(Datum, "CDU/CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AfD") %>%
+  plotPollData <- pollData %>% select(Datum, "CDU/CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AfD") %>%
     as_tibble %>% gather(key = "party", value = "proportion", -Datum)
   
   g <- ggplot(data = plotData, aes(x = time, y = estimate, group = party,
