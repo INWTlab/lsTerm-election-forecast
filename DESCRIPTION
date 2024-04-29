@@ -13,7 +13,6 @@ Description: Election forecast using poll data for german federal elections and 
 Imports:
     cmdstanr (>= 0.7.1),
     data.table (>= 1.14.8),
-    dbtools (>= 22.8.1),
     dplyr (>= 1.1.0),
     ggplot2 (>= 3.4.0),
     rjson (>= 0.2.21),

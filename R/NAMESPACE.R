@@ -1,6 +1,5 @@
 #' @importFrom cmdstanr cmdstan_model
 #' @importFrom data.table rbindlist
-#' @importFrom dbtools sendData Credentials
 #' @importFrom dplyr %>% arrange all_of across everything contains filter group_by
 #' slice ungroup mutate as_tibble select mutate_each desc funs n bind_rows left_join
 #' case_when pull reframe rename_at row_number starts_with vars rename summarise
