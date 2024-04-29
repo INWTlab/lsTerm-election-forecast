@@ -1,0 +1,35 @@
+"land","year","governing_coalition","latest_election"
+"Baden-Württemberg",2021,"GRÜNE, CDU/CSU",1
+"Baden-Württemberg",2016,"GRÜNE, CDU/CSU",0
+"Bayern",2023,"CDU/CSU, FW",1
+"Bayern",2018,"CDU/CSU, FW",0
+"Berlin",2023,"CDU/CSU, SPD",1
+"Berlin",2021,"SPD, GRÜNE, LINKE",0
+"Brandenburg",2019,"SPD, CDU/CSU, GRÜNE",1
+"Brandenburg",2014,"SPD, LINKE",0
+"Bremen",2023,"SPD, GRÜNE, LINKE",1
+"Bremen",2019,"SPD, GRÜNE, LINKE",0
+"Bundestag",2021,"SPD, FDP, GRÜNE",1
+"Bundestag",2017,"CDU/CSU, SPD",0
+"Hamburg",2020,"SPD, GRÜNE",1
+"Hamburg",2015,"SPD, GRÜNE",0
+"Hessen",2023,"CDU/CSU, SPD",1
+"Hessen",2018,"CDU/CSU, GRÜNE",0
+"Mecklenburg-Vorpommern",2021,"SPD, LINKE",1
+"Mecklenburg-Vorpommern",2016,"SPD, CDU/CSU",0
+"Niedersachsen",2022,"SPD, GRÜNE",1
+"Niedersachsen",2017,"SPD, CDU/CSU",0
+"Nordrhein-Westfalen",2022,"CDU/CSU, GRÜNE",1
+"Nordrhein-Westfalen",2017,"CDU/CSU, FDP",0
+"Rheinland-Pfalz",2021,"SPD, GRÜNE, FDP",1
+"Rheinland-Pfalz",2016,"SPD, FDP, GRÜNE",0
+"Saarland",2022,"SPD",1
+"Saarland",2017,"CDU/CSU, SPD",0
+"Sachsen",2019,"CDU/CSU, GRÜNE, SPD",1
+"Sachsen",2014,"CDU/CSU, SPD",0
+"Sachsen-Anhalt",2021,"CDU/CSU, SPD, FDP",1
+"Sachsen-Anhalt",2016,"CDU/CSU, SPD, GRÜNE",0
+"Schleswig-Holstein",2022,"CDU/CSU, GRÜNE",1
+"Schleswig-Holstein",2017,"CDU/CSU, FDP, GRÜNE",0
+"Thüringen",2019,"LINKE, SPD, GRÜNE",1
+"Thüringen",2014,"LINKE, SPD, GRÜNE",0

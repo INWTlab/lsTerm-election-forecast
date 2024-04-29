@@ -1,23 +1,35 @@
 Package: lsTermElectionForecast
 Type: Package
 Title: Forecast elections for multi-party-elections
-Version: 1.0.1
-Author: person("Marcus", "Groß", email = "marcus.gross@inwt-statistics.de",
-                  role = c("aut", "cre"))
-Description: Election forecast using poll data for german federal elections and other multi-party elections
+Version: 24.04.6
+Authors@R: c(
+        person("Marcus", "Groß", email = "info@inwt-statistics.de", role = c("aut", "cre")),
+        person("Sarah", "Wagner", email = "sarah.wagner@inwt-statistics.de", role = "aut"),
+        person("Lukas", "Fuchs", email = "lukas.fuchs@inwt-statistics.de", role = "aut"),
+        person("Till", "Bethge", email = "till.bethge@inwt-statistcs.de", role = "aut"),
+        person("Felix", "Reimann", email = "felix.reimann@inwt-statistics.de", role = "aut"),
+        person("Mira", "Klein", email = "mira.klein@inwt-statistics.de", role = "aut"))
+Description: Election forecast using poll data for german federal elections and other multi-party elections.
 Imports:
-  data.table, 
-  dplyr (>= 1.0.0),
-  ggplot2,
-  rjson,
-  jsonlite,
-  httr,
-  rstan (>= 2.19.0),
-  rvest,
-  tidyr,
-  XML,
-  xml2
-License: MIT
+    cmdstanr (>= 0.7.1),
+    data.table (>= 1.14.8),
+    dbtools (>= 22.8.1),
+    dplyr (>= 1.1.0),
+    ggplot2 (>= 3.4.0),
+    rjson (>= 0.2.21),
+    jsonlite (>= 1.8.7),
+    httr (>= 1.4.5),
+    qdapRegex (>= 0.7.8),
+    rvest (>= 1.0.3),
+    tidyr (>= 1.3.0),
+    XML (>= 3.99.0),
+    xml2 (>= 1.3.5)
+License: file LICENSE
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.1.1
+RoxygenNote: 7.3.1
+Depends: 
+    R (>= 4.3.0)
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
