@@ -5,8 +5,19 @@
 #' @export
 calculate_coalition_probs <-
   function(modelResults, dataPrep, predDate) {
+    
     # LOAD ELECTION RESULTS ----------------------------------------------------
     
+    # To update election results manually:
+    # urls <- get_election_result_urls()
+    # election_results <- get_election_results_from_url(urls)
+    # save(election_results, file = "inst/prepared_data/election_results.RData")
+    
+    load(
+      system.file("prepared_data",
+                  "election_results.RData",
+                  package = "lsTermElectionForecast")
+    )
     election_results <-
       split_election_results_by_year(election_results)
     
