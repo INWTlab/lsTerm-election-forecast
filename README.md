@@ -1,4 +1,4 @@
-2021 German Federal Election Forecasting Model
+2025 German Federal Election Forecasting Model
 ===============================================
 
  With the German federal election (_Bundestagswahl_) approaching in September 2025, [INWT-Statistics](https://www.inwt-statistics.com) aims to build a comprehensive model that forecasts the _Bundestagswahl_ results. 
