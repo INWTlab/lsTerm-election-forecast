@@ -1,8 +1,7 @@
 create_coalition_model_data <- function(election_result) {
   
   # Calculate all combinations of names
-  # Exclude coalitions with BSW for now because we lack historical data
-  parties <- setdiff(parties(), "BSW")
+  parties <- parties()
   combinations_2way <- combn(parties, 2, simplify = FALSE)
   combinations_3way <- combn(parties, 3, simplify = FALSE)
   all_combinations <- c(combinations_2way, combinations_3way)
@@ -36,6 +35,9 @@ create_coalition_model_data <- function(election_result) {
       unique(election_result$year) == 2019) {
     coalitions <-
       append(coalitions, list(c("LINKE", "SPD", "GR\u00dcNE")))
+  } else if (unique(election_result$land) == "Th\u00fcringen" &
+             unique(election_result$year) == 2024) {
+    coalitions <- append(coalitions, list(c("CDU/CSU", "BSW", "SPD")))
   } else if (unique(election_result$land) == "Sachsen-Anhalt" &
              unique(election_result$year) == 2021) {
     coalitions <- append(coalitions, list(c("CDU/CSU", "SPD", "FDP")))

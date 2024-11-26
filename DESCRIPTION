@@ -1,7 +1,7 @@
 Package: lsTermElectionForecast
 Type: Package
 Title: Forecast elections for multi-party-elections
-Version: 24.04.6
+Version: 24.11.0
 Authors@R: c(
         person("Marcus", "Groß", email = "info@inwt-statistics.de", role = c("aut", "cre")),
         person("Sarah", "Wagner", email = "sarah.wagner@inwt-statistics.de", role = "aut"),

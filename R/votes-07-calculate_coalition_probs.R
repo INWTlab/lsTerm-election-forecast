@@ -73,8 +73,7 @@ calculate_coalition_probs <-
     }
     
     # Generate all possible combinations
-    # Exclude coalitions with BSW for now because we lack historical data
-    parties <- setdiff(parties(), "BSW")
+    parties <- parties()
     combinations_2way <- combn(parties, 2, simplify = FALSE)
     combinations_3way <- combn(parties, 3, simplify = FALSE)
     all_combinations <- c(combinations_2way, combinations_3way)
@@ -115,7 +114,7 @@ calculate_coalition_probs <-
       arrange(-prob)
     
     # Assign coalition_id ----------------------------------------------------
-    # there 150 possible coalitions
+    # there are 252 possible coalitions
     # id 1 - 18 are identical to old model
     coalition_probs$coalition_id[coalition_probs$possible_coalition_ordered ==
                                    "CDU/CSU-SPD"] <- 1
@@ -154,13 +153,24 @@ calculate_coalition_probs <-
     coalition_probs$coalition_id[coalition_probs$possible_coalition_ordered ==
                                    "SPD-CDU/CSU-GR\u00dcNE"] <- 18
     
+    # All coalitions without BSW must have ids until 150
+    coalition_probs_without_bsw <- coalition_probs %>%
+      filter(!grepl("BSW", possible_coalition_ordered)) %>% 
+      arrange(coalition_id, possible_coalition_ordered) %>% 
+      mutate(across(coalition_id, ~ ifelse(is.na(.), row_number(), .)))
+    
+    # BSW coalitions must have ids starting from 151
+    coalition_probs_bsw <- coalition_probs %>%
+      filter(grepl("BSW", possible_coalition_ordered)) %>% 
+      arrange(possible_coalition_ordered) %>% 
+      mutate(across(coalition_id, ~ ifelse(is.na(.), row_number() + 150, .)))
+    
     coalition_probs_all <-
-      coalition_probs %>%
+      coalition_probs_without_bsw %>% 
+      bind_rows(coalition_probs_bsw) %>%
       mutate(date_forecast = predDate) %>%
       select(date_forecast,
              possible_coalition = possible_coalition_ordered,
              coalition_id,
-             estimate = prob) %>%
-      arrange(coalition_id, possible_coalition) %>%
-      mutate(across(coalition_id, ~ ifelse(is.na(.), row_number(), .)))
+             estimate = prob)
   }
