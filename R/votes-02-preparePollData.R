@@ -108,9 +108,8 @@ preparePollData <- function(pollData,
   # date is uncertain and we don't want the prediction to stop because of a wrong
   # prediction time frame)
   timeSeq <-
-    seq(min(allData2[, "Datum"]), floor(as.numeric(
-      difftime(max(elections$Datum), as.Date("1970-01-04"), units = "weeks")
-    )) + 4, by = 1)
+    seq(min(allData2[, "Datum"]),
+        weeksBetweenOriginAndDate(max(elections$Datum)) + 4, by = 1)
   matchedDates <-
     match(allData2[, "Datum"], timeSeq) + as.numeric(as.character(factor(
       allData2$party,

@@ -1,14 +1,17 @@
 #' @importFrom cmdstanr cmdstan_model
 #' @importFrom data.table rbindlist
+#' @importFrom dbtools Credentials sendData sendQuery
 #' @importFrom dplyr %>% arrange all_of across everything contains filter group_by
-#' slice ungroup mutate as_tibble select mutate_each desc funs n bind_rows left_join
-#' case_when pull reframe rename_at row_number starts_with vars rename summarise
+#' slice ungroup mutate as_tibble select mutate_each desc funs n bind_rows relocate last_col
+#' full_join left_join case_when pull reframe rename_at row_number starts_with
+#' vars rename summarise setdiff
 #' @importFrom ggplot2 ggplot geom_ribbon aes geom_line geom_vline xlim annotate
 #' geom_point ylim scale_fill_manual geom_point scale_color_manual scale_y_continuous
 #' @importFrom httr GET
+#' @importFrom lubridate dweeks
 #' @importFrom rjson fromJSON
 #' @importFrom jsonlite toJSON
-#' @importFrom tidyr expand gather pivot_longer
+#' @importFrom tidyr complete expand fill gather pivot_longer
 #' @importFrom rvest html_nodes html_text html_attr html_table html_node
 #' @importFrom stats model.matrix acf pacf na.omit quantile rgamma time
 #' @importFrom qdapRegex ex_between
@@ -16,6 +19,7 @@
 #' @importFrom XML readHTMLTable
 #' @importFrom xml2 read_html xml_attr
 #' @importFrom utils read.delim
+#' @importFrom rlang .data
 NULL
 
 globalVariables(c(".",

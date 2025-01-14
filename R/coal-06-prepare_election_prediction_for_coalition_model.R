@@ -5,15 +5,9 @@ prepare_pred_for_coal_model <-
                                    type = "election_day",
                                    party_id = parties)
     
-    election_time_seq <-
-      floor(as.numeric(difftime(
-        as.Date(dataPrep$nextElectionDate),
-        as.Date("1970-01-04"),
-        units = "weeks"
-      )))
-    
     election_pred <-
-      modelResults$samples$yFinal[, , 1 + which(dataPrep$timeSeq == election_time_seq)] %>%
+      modelResults$samples$yFinal[, , getDateIdInTimeseq(dataPrep$timeSeq,
+                                                         dataPrep$nextElectionDate)] %>%
       as.data.frame() %>%
       rename_at(vars(starts_with('V')), ~ paste0("V", parties)) %>%
       mutate(sample = 1:nrow(.)) %>%

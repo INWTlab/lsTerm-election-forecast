@@ -29,9 +29,9 @@ estimate_coalition_model <-
       N = nrow(model_data_train),
       K1 = 3,
       # number of predictors other
-      K2 = 15,
+      K2 = 21,
       # number of predictors parties combinations
-      K3 = 5,
+      K3 = 6,
       # number of predictors party
       L = ngroups,
       # number of groups, each group is one election
