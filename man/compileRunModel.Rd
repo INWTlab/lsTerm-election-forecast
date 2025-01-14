@@ -9,7 +9,7 @@ compileRunModel(
   dev = FALSE,
   iter = ifelse(dev, 20, 125),
   warmup = ifelse(dev, 10, 275),
-  control = list(max_treedepth = ifelse(dev, 3, 13), adapt_delta = 0.8),
+  control = list(max_treedepth = ifelse(dev, 3, 14), adapt_delta = 0.8),
   chains = 8,
   parallel_chains = 8,
   seed = 12345

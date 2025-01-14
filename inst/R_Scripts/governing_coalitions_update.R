@@ -22,7 +22,9 @@ governing_coalitions_new <- governing_coalitions_new %>%
   mutate(
     year = ifelse(land == "Hessen", 2023, year),
     year = as.integer(year),
-    year = ifelse(land == "Thüringen", 2019, year)
+    year = ifelse(land == "Thüringen", 2024, year),
+    year = ifelse(land == "Brandenburg", 2019, year),
+    year = ifelse(land == "Rheinland-Pfalz", 2021, year)
   )
 
 # -------------------------------------------------------------------------------
@@ -30,6 +32,10 @@ governing_coalitions_new <- governing_coalitions_new %>%
 # Read in the old governing_coalitions
 governing_coalitions <-
   read.delim("inst/prepared_data/governing_coalitions.csv", sep = ",")
+
+# Ensure that the correct year in governing_coalitions_new is given.
+# The year might differ if a new Ministerpräsident*in is selected without new elections.
+# Make sure that only the coalition that you want to update is changed.
 
 # Bind with the new coalitions and handle the data further
 governing_coalitions <-
@@ -45,6 +51,9 @@ governing_coalitions <- governing_coalitions %>%
   top_n(2, year) %>%
   mutate(latest_election = ifelse(year == max(year), 1, 0)) %>%
   ungroup()
+
+# Manually update specific coalitions after elections
+# governing_coalitions$governing_coalition[governing_coalitions$land=="Thüringen" & governing_coalitions$year==2024] <- "CDU/CSU, BSW, SPD"
 
 write.csv(governing_coalitions,
           file = "inst/prepared_data/governing_coalitions.csv", row.names = FALSE)

@@ -91,6 +91,8 @@ get_election_results_from_url <- function(urls) {
       filter(party %in% parties()) %>%
       arrange(year, seat_share)
   })
+  # use_data(election_results, internal = TRUE) # save to sysdata.rda, don't forget
+  # library(usethis)
 }
 
 #' Splits election results by year

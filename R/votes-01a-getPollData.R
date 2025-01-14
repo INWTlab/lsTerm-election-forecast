@@ -214,18 +214,3 @@ asNumericWithNA <- function(vec) {
   result_vec[!naPositions] <- as.numeric(vec[!naPositions])
   result_vec
 }
-
-
-#' Print date of latest poll per pollster
-#'
-#' @param fact_survey data.frame with columns "Institut" and "Datum"
-#' 
-#' @export
-printLatestPollPerPollster <- function(fact_survey) {
-  cat("Date of latest poll per pollster:\n")
-  fact_survey %>%
-    group_by(Institut) %>%
-    summarise(latestPoll = max(Datum)) %>%
-    arrange(desc(latestPoll)) %>%
-    print()
-}
